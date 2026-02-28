@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { ProfileRecord } from "@/lib/types";
 
-const AVATAR_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET ?? "avatars";
+const configuredAvatarBucket = process.env.NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET;
+const configuredPostsBucket = process.env.NEXT_PUBLIC_SUPABASE_POSTS_BUCKET;
+const avatarBuckets = Array.from(
+  new Set([configuredAvatarBucket, configuredPostsBucket, "posts"].filter(Boolean)),
+) as string[];
+
+const isBucketNotFoundError = (message: string) =>
+  message.toLowerCase().includes("bucket") && message.toLowerCase().includes("not found");
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -97,18 +104,31 @@ export default function SettingsPage() {
 
     if (avatarFile) {
       const avatarPath = `${userId}/${Date.now()}-${avatarFile.name.replace(/\s+/g, "-")}`;
-      const { error: uploadError } = await supabase.storage
-        .from(AVATAR_BUCKET)
-        .upload(avatarPath, avatarFile, { contentType: avatarFile.type, upsert: false });
+      let uploadMessage: string | null = null;
 
-      if (uploadError) {
-        setSaving(false);
-        setMessage(uploadError.message);
-        return;
+      for (const bucket of avatarBuckets) {
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(avatarPath, avatarFile, { contentType: avatarFile.type, upsert: false });
+
+        if (!uploadError) {
+          const { data: avatarPublicUrl } = supabase.storage.from(bucket).getPublicUrl(avatarPath);
+          avatarUrl = avatarPublicUrl.publicUrl;
+          uploadMessage = null;
+          break;
+        }
+
+        uploadMessage = uploadError.message;
+        if (!isBucketNotFoundError(uploadError.message)) {
+          break;
+        }
       }
 
-      const { data: avatarPublicUrl } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(avatarPath);
-      avatarUrl = avatarPublicUrl.publicUrl;
+      if (uploadMessage) {
+        setSaving(false);
+        setMessage(uploadMessage);
+        return;
+      }
     }
 
     const { error: upsertError } = await supabase.from("profiles").upsert(

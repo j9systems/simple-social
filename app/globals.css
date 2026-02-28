@@ -40,12 +40,12 @@ p {
 .page-wrap {
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem 6.5rem;
+  padding: 1.25rem 1.25rem calc(6.25rem + env(safe-area-inset-bottom));
 }
 
 .app-shell {
   min-height: 100dvh;
-  padding-bottom: 5.75rem;
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
 
 .top-bar {
@@ -63,16 +63,16 @@ p {
 
 .tab-bar {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(480px, calc(100% - 1rem));
-  bottom: max(0.85rem, env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  width: 100%;
+  bottom: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  border-radius: 18px;
+  border-top: 1px solid var(--line);
   background: var(--surface);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.1);
+  padding-bottom: env(safe-area-inset-bottom);
   z-index: 15;
 }
 
@@ -86,8 +86,7 @@ p {
   padding: 0.65rem 0.35rem;
   font-size: 0.75rem;
   font-weight: 600;
-  border-radius: 14px;
-  margin: 0.25rem;
+  margin: 0;
   transition: background-color 120ms ease, color 120ms ease;
 }
 
@@ -117,6 +116,10 @@ p {
   gap: 0.9rem;
 }
 
+.card > * {
+  min-width: 0;
+}
+
 .auth-page {
   min-height: 100dvh;
   display: grid;
@@ -139,6 +142,8 @@ input {
   padding: 0.65rem 0.75rem;
   font: inherit;
   background: #fff;
+  width: 100%;
+  max-width: 100%;
 }
 
 button {
@@ -276,8 +281,33 @@ button {
   height: 4.2rem;
 }
 
+.settings-form .primary-button,
+.settings-form .secondary-button {
+  width: 100%;
+}
+
 @media (min-width: 769px) {
+  .page-wrap {
+    padding-bottom: 6.5rem;
+  }
+
+  .app-shell {
+    padding-bottom: 5.75rem;
+  }
+
   .tab-bar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(480px, calc(100% - 1rem));
     bottom: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding-bottom: 0;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+  }
+
+  .tab-link {
+    margin: 0.25rem;
   }
 }

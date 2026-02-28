@@ -20,7 +20,8 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 1. Copy `.env.example` to `.env.local`.
 2. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from your Supabase project.
-3. Run `npm install` to install `@supabase/supabase-js`.
+3. (Optional) Set `NEXT_PUBLIC_SUPABASE_POSTS_BUCKET` and `NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET` if your storage bucket names differ from defaults.
+4. Run `npm install` to install `@supabase/supabase-js`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
