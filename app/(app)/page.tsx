@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedPost } from "@/lib/types";
 
@@ -16,6 +17,7 @@ function formatDate(isoDate: string) {
 
 export default function HomePage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +58,19 @@ export default function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    const syncAvatarVersion = () => {
+      setAvatarVersion(readAvatarVersion());
+    };
+
+    syncAvatarVersion();
+    window.addEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
+
+    return () => {
+      window.removeEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
+    };
+  }, []);
+
   const content = useMemo(() => {
     if (!hasSupabaseEnv) {
       return <p>Supabase env vars are missing.</p>;
@@ -78,7 +93,7 @@ export default function HomePage() {
               <img
                 alt={`${post.username ?? "User"} avatar`}
                 className="avatar"
-                src={post.avatar_url || "/next.svg"}
+                src={buildAvatarSrc(post.avatar_url, avatarVersion)}
               />
               <div className="feed-post-meta">
                 <strong>{post.username ?? "Unknown user"}</strong>
@@ -97,7 +112,7 @@ export default function HomePage() {
         ))}
       </div>
     );
-  }, [error, loading, posts]);
+  }, [avatarVersion, error, loading, posts]);
 
   return (
     <section>

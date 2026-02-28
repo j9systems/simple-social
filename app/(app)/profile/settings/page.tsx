@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AVATAR_UPDATED_EVENT, AVATAR_VERSION_KEY, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { ProfileRecord } from "@/lib/types";
 
@@ -12,7 +13,7 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
-  const [avatarCacheBuster, setAvatarCacheBuster] = useState<number | null>(null);
+  const [avatarCacheBuster, setAvatarCacheBuster] = useState<number>(() => readAvatarVersion());
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(hasSupabaseEnv);
@@ -153,7 +154,10 @@ export default function SettingsPage() {
 
     setCurrentAvatarUrl(avatarUrl);
     if (avatarFile) {
-      setAvatarCacheBuster(Date.now());
+      const nextAvatarVersion = Date.now();
+      setAvatarCacheBuster(nextAvatarVersion);
+      window.localStorage.setItem(AVATAR_VERSION_KEY, String(nextAvatarVersion));
+      window.dispatchEvent(new Event(AVATAR_UPDATED_EVENT));
     }
     setAvatarPreviewUrl(null);
     setAvatarFile(null);
@@ -164,7 +168,7 @@ export default function SettingsPage() {
   const displayedAvatarUrl = avatarPreviewUrl
     ? avatarPreviewUrl
     : currentAvatarUrl
-      ? `${currentAvatarUrl}${currentAvatarUrl.includes("?") ? "&" : "?"}v=${avatarCacheBuster ?? 0}`
+      ? buildAvatarSrc(currentAvatarUrl, avatarCacheBuster)
       : null;
 
   return (
