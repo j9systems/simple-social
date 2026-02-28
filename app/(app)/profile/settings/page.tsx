@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { ProfileRecord } from "@/lib/types";
 
-const configuredAvatarBucket = process.env.NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET;
+const avatarBucket = "avatars";
 
 export default function SettingsPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
+  const [avatarCacheBuster, setAvatarCacheBuster] = useState<number | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -59,6 +61,14 @@ export default function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+    };
+  }, [avatarPreviewUrl]);
+
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!hasSupabaseEnv || !userId) {
@@ -96,17 +106,10 @@ export default function SettingsPage() {
     let avatarUrl = currentAvatarUrl;
 
     if (avatarFile) {
-      if (!configuredAvatarBucket) {
-        setSaving(false);
-        setMessage("NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET is not configured.");
-        return;
-      }
+      const avatarPath = `${userId}/avatar.jpeg`;
 
-      const fileExt = avatarFile.name.split(".").pop();
-      const avatarPath = `${userId}/avatar.${fileExt}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(configuredAvatarBucket)
+      const { error: uploadError } = await supabase.storage
+        .from(avatarBucket)
         .upload(avatarPath, avatarFile, { contentType: avatarFile.type, upsert: true });
 
       if (uploadError) {
@@ -115,22 +118,29 @@ export default function SettingsPage() {
         return;
       }
 
-      const { data: avatarPublicUrl } = supabase.storage.from(configuredAvatarBucket).getPublicUrl(uploadData.path);
+      const { data: avatarPublicUrl } = supabase.storage.from(avatarBucket).getPublicUrl(avatarPath);
       avatarUrl = avatarPublicUrl.publicUrl;
     }
 
-    const { error: upsertError } = await supabase.from("profiles").upsert(
-      {
-        id: userId,
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from("profiles")
+      .update({
         username: nextUsername,
         avatar_url: avatarUrl,
-      },
-      { onConflict: "id" },
-    );
+      })
+      .eq("id", userId)
+      .select("id")
+      .maybeSingle();
 
-    if (upsertError) {
+    if (updateError) {
       setSaving(false);
-      setMessage(upsertError.message);
+      setMessage(updateError.message);
+      return;
+    }
+
+    if (!updatedProfile) {
+      setSaving(false);
+      setMessage("Profile not found.");
       return;
     }
 
@@ -142,10 +152,20 @@ export default function SettingsPage() {
     });
 
     setCurrentAvatarUrl(avatarUrl);
+    if (avatarFile) {
+      setAvatarCacheBuster(Date.now());
+    }
+    setAvatarPreviewUrl(null);
     setAvatarFile(null);
     setSaving(false);
     setMessage("Profile updated.");
   };
+
+  const displayedAvatarUrl = avatarPreviewUrl
+    ? avatarPreviewUrl
+    : currentAvatarUrl
+      ? `${currentAvatarUrl}${currentAvatarUrl.includes("?") ? "&" : "?"}v=${avatarCacheBuster ?? 0}`
+      : null;
 
   return (
     <section>
@@ -169,11 +189,22 @@ export default function SettingsPage() {
           <input
             accept="image/*"
             id="avatar"
-            onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)}
+            onChange={(event) => {
+              const nextFile = event.target.files?.[0] ?? null;
+              setAvatarFile(nextFile);
+              if (nextFile) {
+                setAvatarPreviewUrl(URL.createObjectURL(nextFile));
+                return;
+              }
+
+              setAvatarPreviewUrl(null);
+            }}
             type="file"
           />
 
-          {currentAvatarUrl ? <img alt="Current avatar" className="avatar settings-avatar" src={currentAvatarUrl} /> : null}
+          {displayedAvatarUrl ? (
+            <img alt="Current avatar" className="avatar settings-avatar" src={displayedAvatarUrl} />
+          ) : null}
 
           <button className="primary-button" disabled={saving} type="submit">
             {saving ? "Saving..." : "Save changes"}
