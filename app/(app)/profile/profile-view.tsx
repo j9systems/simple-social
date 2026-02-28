@@ -214,7 +214,7 @@ export default function ProfileView({ username }: ProfileViewProps) {
             </svg>
           </Link>
         ) : null}
-        <header className="profile-header card">
+        <header className="profile-header">
           <img
             alt={`${displayName} avatar`}
             className="avatar profile-avatar"
@@ -242,6 +242,8 @@ export default function ProfileView({ username }: ProfileViewProps) {
       {loading ? <p>Loading profile...</p> : null}
       {error ? <p>{error}</p> : null}
       {!loading && !error && posts.length === 0 ? <p>No posts yet.</p> : null}
+
+      <hr aria-hidden="true" className="profile-separator" />
 
       <div className="profile-grid">
         {posts.map((post) => (
