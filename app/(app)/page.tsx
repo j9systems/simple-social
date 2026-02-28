@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
@@ -90,15 +91,31 @@ export default function HomePage() {
         {posts.map((post) => (
           <article className="feed-post" key={post.id}>
             <header className="feed-post-header">
-              <img
-                alt={`${post.username ?? "User"} avatar`}
-                className="avatar"
-                src={buildAvatarSrc(post.avatar_url, avatarVersion)}
-              />
-              <div className="feed-post-meta">
-                <strong>{post.username ?? "Unknown user"}</strong>
-                <span>{formatDate(post.created_at)}</span>
-              </div>
+              {post.username ? (
+                <Link className="feed-user-link" href={`/u/${post.username}`}>
+                  <img
+                    alt={`${post.username} avatar`}
+                    className="avatar"
+                    src={buildAvatarSrc(post.avatar_url, avatarVersion)}
+                  />
+                  <div className="feed-post-meta">
+                    <strong>{post.username}</strong>
+                    <span>{formatDate(post.created_at)}</span>
+                  </div>
+                </Link>
+              ) : (
+                <>
+                  <img
+                    alt="User avatar"
+                    className="avatar"
+                    src={buildAvatarSrc(post.avatar_url, avatarVersion)}
+                  />
+                  <div className="feed-post-meta">
+                    <strong>Unknown user</strong>
+                    <span>{formatDate(post.created_at)}</span>
+                  </div>
+                </>
+              )}
             </header>
 
             <img alt={post.caption ?? "Post image"} className="feed-image" src={post.image_url} />
@@ -115,8 +132,7 @@ export default function HomePage() {
   }, [avatarVersion, error, loading, posts]);
 
   return (
-    <section>
-      <h1>Home</h1>
+    <section className="home-page">
       {content}
     </section>
   );
