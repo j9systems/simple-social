@@ -57,9 +57,19 @@ export default function ProfileView({ username }: ProfileViewProps) {
       setViewer(userData.user);
 
       const profileQuery = supabase.from("profiles").select("id,username,avatar_url,full_name");
-      const profileResponse = username
+      let profileResponse = username
         ? await profileQuery.eq("username", username).maybeSingle()
         : await profileQuery.eq("id", userData.user.id).maybeSingle();
+
+      if (
+        profileResponse.error &&
+        (profileResponse.error.message.includes("full_name") || profileResponse.error.message.includes("column"))
+      ) {
+        const fallbackProfileQuery = supabase.from("profiles").select("id,username,avatar_url");
+        profileResponse = username
+          ? await fallbackProfileQuery.eq("username", username).maybeSingle()
+          : await fallbackProfileQuery.eq("id", userData.user.id).maybeSingle();
+      }
 
       if (!mounted) {
         return;
