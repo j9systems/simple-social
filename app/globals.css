@@ -1,26 +1,156 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f7f5;
+  --surface: #ffffff;
+  --foreground: #1e1d1a;
+  --muted: #6b665d;
+  --line: #dad4ca;
+  --accent: #0d77d9;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Segoe UI", sans-serif;
+  --font-mono: Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Segoe UI", sans-serif;
+}
+
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.4rem;
+}
+
+p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.page-wrap {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.app-shell {
+  min-height: 100dvh;
+  padding-bottom: 4.75rem;
+}
+
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--background) 92%, white);
+  backdrop-filter: blur(8px);
+}
+
+.top-bar-copy {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.top-bar-copy span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.tab-link {
+  text-decoration: none;
+  text-align: center;
+  color: var(--muted);
+  padding: 0.85rem 0.5rem;
+  font-weight: 500;
+}
+
+.tab-link.active {
+  color: var(--foreground);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.auth-page {
+  min-height: 100dvh;
+  display: grid;
+  align-content: center;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.6rem;
+}
+
+label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  background: #fff;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.primary-button,
+.secondary-button {
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid transparent;
+}
+
+.primary-button {
+  background: var(--accent);
+  color: #fff;
+}
+
+.secondary-button {
+  border-color: var(--line);
+  background: #fff;
+  color: var(--foreground);
+}
+
+.auth-message {
+  font-size: 0.9rem;
 }
