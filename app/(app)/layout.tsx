@@ -2,15 +2,47 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 
 const tabs = [
-  { href: "/", label: "Home" },
-  { href: "/search", label: "Search" },
-  { href: "/upload", label: "Upload" },
-  { href: "/profile", label: "Profile" },
+  {
+    href: "/",
+    label: "Home",
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M3 10.5 12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6h-5v6h-5A1.5 1.5 0 0 1 3 19.5v-9Z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/search",
+    label: "Search",
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M11 4a7 7 0 1 0 4.4 12.5l4 4 1.4-1.4-4-4A7 7 0 0 0 11 4Zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/upload",
+    label: "Upload",
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/profile",
+    label: "Profile",
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0 10c4.4 0 8 2 8 4.5V21H4v-2.5C4 16 7.6 14 12 14Z" />
+      </svg>
+    ),
+  },
 ];
 
 export default function AppLayout({
@@ -59,8 +91,6 @@ export default function AppLayout({
     };
   }, [router]);
 
-  const email = useMemo(() => session?.user.email ?? "Logged in user", [session]);
-
   if (checkingAuth) {
     return (
       <main className="page-wrap">
@@ -90,19 +120,7 @@ export default function AppLayout({
   return (
     <div className="app-shell">
       <header className="top-bar">
-        <div className="top-bar-copy">
-          <strong>Simple Social</strong>
-          <span>{email}</span>
-        </div>
-        <button
-          className="secondary-button"
-          onClick={async () => {
-            await supabase.auth.signOut();
-          }}
-          type="button"
-        >
-          Log out
-        </button>
+        <strong>Simple Social</strong>
       </header>
 
       <main className="page-wrap">{children}</main>
@@ -110,11 +128,16 @@ export default function AppLayout({
       <nav aria-label="Primary" className="tab-bar">
         {tabs.map((tab) => (
           <Link
-            className={pathname === tab.href ? "tab-link active" : "tab-link"}
+            className={
+              pathname === tab.href || pathname.startsWith(`${tab.href}/`)
+                ? "tab-link active"
+                : "tab-link"
+            }
             href={tab.href}
             key={tab.href}
           >
-            {tab.label}
+            <span className="tab-icon">{tab.icon}</span>
+            <span className="tab-label">{tab.label}</span>
           </Link>
         ))}
       </nav>

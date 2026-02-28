@@ -40,12 +40,12 @@ p {
 .page-wrap {
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: 1.25rem 1.25rem 6.5rem;
 }
 
 .app-shell {
   min-height: 100dvh;
-  padding-bottom: 4.75rem;
+  padding-bottom: 5.75rem;
 }
 
 .top-bar {
@@ -54,45 +54,58 @@ p {
   z-index: 10;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: center;
   padding: 0.8rem 1.25rem;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--background) 92%, white);
   backdrop-filter: blur(8px);
 }
 
-.top-bar-copy {
-  display: grid;
-  gap: 0.1rem;
-}
-
-.top-bar-copy span {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 .tab-bar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, calc(100% - 1rem));
+  bottom: max(0.85rem, env(safe-area-inset-bottom));
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 18px;
   background: var(--surface);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+  z-index: 15;
 }
 
 .tab-link {
+  display: grid;
+  place-items: center;
+  gap: 0.25rem;
   text-decoration: none;
   text-align: center;
   color: var(--muted);
-  padding: 0.85rem 0.5rem;
-  font-weight: 500;
+  padding: 0.65rem 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 14px;
+  margin: 0.25rem;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.tab-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.tab-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
 }
 
 .tab-link.active {
   color: var(--foreground);
+  background: color-mix(in srgb, var(--accent) 22%, #fff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent);
 }
 
 .card {
@@ -153,4 +166,118 @@ button {
 
 .auth-message {
   font-size: 0.9rem;
+}
+
+.feed-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.feed-post {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.feed-post-header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.85rem;
+}
+
+.feed-post-meta {
+  display: grid;
+}
+
+.feed-post-meta span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.avatar {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: #ece8e0;
+}
+
+.feed-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+
+.feed-caption {
+  color: var(--foreground);
+  padding: 0.8rem 0.85rem 0;
+}
+
+.feed-stats {
+  display: flex;
+  gap: 1rem;
+  color: var(--muted);
+  padding: 0.7rem 0.85rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.upload-form,
+.settings-form {
+  margin-top: 0.8rem;
+}
+
+.profile-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-header {
+  align-items: center;
+  grid-template-columns: auto 1fr auto;
+}
+
+.profile-avatar {
+  width: 3.2rem;
+  height: 3.2rem;
+}
+
+.profile-copy {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.profile-copy h1 {
+  margin: 0;
+}
+
+.settings-link {
+  text-decoration: none;
+}
+
+.profile-grid {
+  display: grid;
+  gap: 0.25rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-grid-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.settings-avatar {
+  width: 4.2rem;
+  height: 4.2rem;
+}
+
+@media (min-width: 769px) {
+  .tab-bar {
+    bottom: 1rem;
+  }
 }
