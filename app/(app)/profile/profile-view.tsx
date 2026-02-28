@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
+import { isMissingFullNameColumnError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedPost, ProfileRecord } from "@/lib/types";
 
@@ -61,10 +62,7 @@ export default function ProfileView({ username }: ProfileViewProps) {
         ? await profileQuery.eq("username", username).maybeSingle()
         : await profileQuery.eq("id", userData.user.id).maybeSingle();
 
-      if (
-        profileResponse.error &&
-        (profileResponse.error.message.includes("full_name") || profileResponse.error.message.includes("column"))
-      ) {
+      if (isMissingFullNameColumnError(profileResponse.error)) {
         const fallbackProfileQuery = supabase.from("profiles").select("id,username,avatar_url");
         profileResponse = username
           ? await fallbackProfileQuery.eq("username", username).maybeSingle()

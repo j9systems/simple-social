@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AVATAR_UPDATED_EVENT, AVATAR_VERSION_KEY, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
+import { isMissingFullNameColumnError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { ProfileRecord } from "@/lib/types";
 
@@ -49,7 +50,7 @@ export default function SettingsPage() {
       let profileData = primaryProfileResponse.data;
       let profileError = primaryProfileResponse.error;
 
-      if (profileError && (profileError.message.includes("full_name") || profileError.message.includes("column"))) {
+      if (isMissingFullNameColumnError(profileError)) {
         setSupportsFullNameColumn(false);
         const fallbackProfileResponse = await supabase
           .from("profiles")
@@ -165,7 +166,7 @@ export default function SettingsPage() {
     if (
       updateResponse.error &&
       supportsFullNameColumn &&
-      (updateResponse.error.message.includes("full_name") || updateResponse.error.message.includes("column"))
+      isMissingFullNameColumnError(updateResponse.error)
     ) {
       setSupportsFullNameColumn(false);
       updateResponse = await supabase
