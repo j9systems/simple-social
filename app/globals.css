@@ -69,25 +69,48 @@ p {
   bottom: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid var(--line);
-  background: var(--surface);
-  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.1);
-  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid color-mix(in srgb, var(--line) 86%, #fff);
+  background: color-mix(in srgb, var(--surface) 94%, #f4f1ea);
+  box-shadow: 0 -2px 8px rgba(30, 29, 26, 0.08);
+  padding: 0.25rem 0 max(env(safe-area-inset-bottom), 0px);
   z-index: 15;
 }
 
 .tab-link {
-  display: grid;
-  place-items: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 0.25rem;
   text-decoration: none;
   text-align: center;
   color: var(--muted);
-  padding: 0.65rem 0.35rem;
+  padding: 0.5rem 0.45rem;
   font-size: 0.75rem;
   font-weight: 600;
-  margin: 0;
-  transition: background-color 120ms ease, color 120ms ease;
+  line-height: 1.1;
+  min-height: 3rem;
+  margin: 0.15rem 0.2rem;
+  border-radius: 999px;
+  transition: color 140ms ease;
+}
+
+.tab-link::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--accent) 14%, #fff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent);
+  opacity: 0;
+  transform: scale(0.96);
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+
+.tab-link > * {
+  position: relative;
+  z-index: 1;
 }
 
 .tab-icon {
@@ -103,8 +126,11 @@ p {
 
 .tab-link.active {
   color: var(--foreground);
-  background: color-mix(in srgb, var(--accent) 22%, #fff);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+.tab-link.active::before {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .card {
@@ -176,6 +202,10 @@ button {
 .feed-list {
   display: grid;
   gap: 1rem;
+}
+
+.home-page {
+  margin-top: -1.25rem;
 }
 
 .feed-post {
@@ -317,12 +347,12 @@ button {
     bottom: 1rem;
     border: 1px solid var(--line);
     border-radius: 18px;
-    padding-bottom: 0;
+    padding: 0.25rem;
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
   }
 
   .tab-link {
-    margin: 0.25rem;
+    margin: 0.15rem;
   }
 }
 
