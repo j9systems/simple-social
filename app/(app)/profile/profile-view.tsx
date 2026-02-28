@@ -156,7 +156,8 @@ export default function ProfileView({ username }: ProfileViewProps) {
   }, [profile?.username, viewer?.email]);
 
   const isOwnProfile = Boolean(viewer?.id && profile?.id && viewer.id === profile.id);
-  const showSettings = !username && isOwnProfile;
+  const showSettings = isOwnProfile;
+  const usernameLabel = profile?.username ?? viewer?.email?.split("@")[0] ?? "profile";
 
   const toggleFollow = async () => {
     if (!viewer?.id || !profile?.id || isOwnProfile || pendingFollowAction) {
@@ -205,31 +206,37 @@ export default function ProfileView({ username }: ProfileViewProps) {
 
   return (
     <section className="profile-page">
-      <header className="profile-header card">
-        <img
-          alt={`${displayName} avatar`}
-          className="avatar profile-avatar"
-          src={buildAvatarSrc(profile?.avatar_url, avatarVersion)}
-        />
-        <div className="profile-copy">
-          <h1>{displayName}</h1>
-          <p className="profile-stats">
-            <span>{posts.length} posts</span>
-            <span>{followersCount} followers</span>
-            <span>{followingCount} following</span>
-          </p>
-        </div>
+      <div className="profile-header-area">
         {showSettings ? (
-          <Link className="secondary-button settings-link" href="/profile/settings">
-            Settings
+          <Link aria-label="Profile settings" className="icon-button profile-settings-button" href="/profile/settings">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M19.14 12.94a7.7 7.7 0 0 0 .06-.94 7.7 7.7 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.63l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.28 7.28 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.22-1.13.53-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.7 8.85a.5.5 0 0 0 .12.63l2.03 1.58a7.7 7.7 0 0 0-.06.94 7.7 7.7 0 0 0 .06.94L2.82 14.52a.5.5 0 0 0-.12.63l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.5.41 1.05.72 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.58-.22 1.13-.53 1.63-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.63l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z" />
+            </svg>
           </Link>
         ) : null}
-        {!isOwnProfile && profile ? (
+        <header className="profile-header card">
+          <img
+            alt={`${displayName} avatar`}
+            className="avatar profile-avatar"
+            src={buildAvatarSrc(profile?.avatar_url, avatarVersion)}
+          />
+          <div className="profile-copy">
+            <h1>{displayName}</h1>
+            <p className="profile-username">@{usernameLabel}</p>
+            <p className="profile-stats">
+              <span>{followersCount} followers</span>
+              <span>{followingCount} following</span>
+            </p>
+          </div>
+        </header>
+      </div>
+      {!isOwnProfile && profile ? (
+        <div className="profile-actions">
           <button className={isFollowing ? "secondary-button" : "primary-button"} onClick={toggleFollow} type="button">
             {pendingFollowAction ? "Updating..." : isFollowing ? "Following" : "Follow"}
           </button>
-        ) : null}
-      </header>
+        </div>
+      ) : null}
 
       {!hasSupabaseEnv ? <p>Supabase env vars are missing.</p> : null}
       {loading ? <p>Loading profile...</p> : null}
