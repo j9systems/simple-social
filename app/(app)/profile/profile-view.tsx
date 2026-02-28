@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
@@ -56,7 +56,7 @@ export default function ProfileView({ username }: ProfileViewProps) {
 
       setViewer(userData.user);
 
-      const profileQuery = supabase.from("profiles").select("id,username,avatar_url");
+      const profileQuery = supabase.from("profiles").select("id,username,avatar_url,full_name");
       const profileResponse = username
         ? await profileQuery.eq("username", username).maybeSingle()
         : await profileQuery.eq("id", userData.user.id).maybeSingle();
@@ -148,12 +148,7 @@ export default function ProfileView({ username }: ProfileViewProps) {
     };
   }, []);
 
-  const displayName = useMemo(() => {
-    if (profile?.username) {
-      return profile.username;
-    }
-    return viewer?.email?.split("@")[0] ?? "Profile";
-  }, [profile?.username, viewer?.email]);
+  const displayName = profile?.full_name?.trim() || profile?.username || viewer?.email?.split("@")[0] || "Profile";
 
   const isOwnProfile = Boolean(viewer?.id && profile?.id && viewer.id === profile.id);
   const showSettings = isOwnProfile;

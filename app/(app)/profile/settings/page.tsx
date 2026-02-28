@@ -11,6 +11,7 @@ const avatarBucket = "avatars";
 export default function SettingsPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
+  const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
   const [avatarCacheBuster, setAvatarCacheBuster] = useState<number>(() => readAvatarVersion());
@@ -41,7 +42,7 @@ export default function SettingsPage() {
       setUserId(data.user.id);
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("id,username,avatar_url")
+        .select("id,username,avatar_url,full_name")
         .eq("id", data.user.id)
         .maybeSingle();
 
@@ -50,6 +51,7 @@ export default function SettingsPage() {
       }
 
       const profile = profileData as ProfileRecord | null;
+      setFullName(profile?.full_name ?? "");
       setUsername(profile?.username ?? "");
       setCurrentAvatarUrl(profile?.avatar_url ?? null);
       setLoading(false);
@@ -126,6 +128,7 @@ export default function SettingsPage() {
     const { data: updatedProfile, error: updateError } = await supabase
       .from("profiles")
       .update({
+        full_name: fullName.trim() || null,
         username: nextUsername,
         avatar_url: avatarUrl,
       })
@@ -147,6 +150,7 @@ export default function SettingsPage() {
 
     await supabase.auth.updateUser({
       data: {
+        full_name: fullName.trim() || null,
         username: nextUsername,
         avatar_url: avatarUrl,
       },
@@ -179,6 +183,15 @@ export default function SettingsPage() {
 
       {!loading && hasSupabaseEnv ? (
         <form className="card settings-form" onSubmit={saveProfile}>
+          <label htmlFor="full-name">Name</label>
+          <input
+            id="full-name"
+            maxLength={80}
+            onChange={(event) => setFullName(event.target.value)}
+            type="text"
+            value={fullName}
+          />
+
           <label htmlFor="username">Username</label>
           <input
             id="username"

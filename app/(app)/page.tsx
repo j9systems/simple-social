@@ -33,9 +33,51 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
 
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (!mounted) {
+        return;
+      }
+
+      if (userError) {
+        setError(userError.message);
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!userData.user) {
+        setError("You need to be logged in to view your feed.");
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
+
+      const viewerId = userData.user.id;
+      const { data: followsData, error: followsError } = await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", viewerId);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (followsError) {
+        setError(followsError.message);
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
+
+      const allowedUserIds = [
+        viewerId,
+        ...((followsData ?? []).map((row) => row.following_id).filter(Boolean) as string[]),
+      ];
+
       const { data, error: feedError } = await supabase
         .from("feed_posts")
         .select(FEED_FIELDS)
+        .in("user_id", allowedUserIds)
         .order("created_at", { ascending: false });
 
       if (!mounted) {
