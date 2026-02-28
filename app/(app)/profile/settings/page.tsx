@@ -6,13 +6,6 @@ import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { ProfileRecord } from "@/lib/types";
 
 const configuredAvatarBucket = process.env.NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET;
-const configuredPostsBucket = process.env.NEXT_PUBLIC_SUPABASE_POSTS_BUCKET;
-const avatarBuckets = Array.from(
-  new Set([configuredAvatarBucket, configuredPostsBucket, "posts"].filter(Boolean)),
-) as string[];
-
-const isBucketNotFoundError = (message: string) =>
-  message.toLowerCase().includes("bucket") && message.toLowerCase().includes("not found");
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -103,32 +96,27 @@ export default function SettingsPage() {
     let avatarUrl = currentAvatarUrl;
 
     if (avatarFile) {
-      const avatarPath = `${userId}/${Date.now()}-${avatarFile.name.replace(/\s+/g, "-")}`;
-      let uploadMessage: string | null = null;
-
-      for (const bucket of avatarBuckets) {
-        const { error: uploadError } = await supabase.storage
-          .from(bucket)
-          .upload(avatarPath, avatarFile, { contentType: avatarFile.type, upsert: false });
-
-        if (!uploadError) {
-          const { data: avatarPublicUrl } = supabase.storage.from(bucket).getPublicUrl(avatarPath);
-          avatarUrl = avatarPublicUrl.publicUrl;
-          uploadMessage = null;
-          break;
-        }
-
-        uploadMessage = uploadError.message;
-        if (!isBucketNotFoundError(uploadError.message)) {
-          break;
-        }
-      }
-
-      if (uploadMessage) {
+      if (!configuredAvatarBucket) {
         setSaving(false);
-        setMessage(uploadMessage);
+        setMessage("NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET is not configured.");
         return;
       }
+
+      const fileExt = avatarFile.name.split(".").pop();
+      const avatarPath = `${userId}/avatar.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(configuredAvatarBucket)
+        .upload(avatarPath, avatarFile, { contentType: avatarFile.type, upsert: true });
+
+      if (uploadError) {
+        setSaving(false);
+        setMessage(uploadError.message);
+        return;
+      }
+
+      const { data: avatarPublicUrl } = supabase.storage.from(configuredAvatarBucket).getPublicUrl(uploadData.path);
+      avatarUrl = avatarPublicUrl.publicUrl;
     }
 
     const { error: upsertError } = await supabase.from("profiles").upsert(

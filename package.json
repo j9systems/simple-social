@@ -2,18 +2,25 @@
   "name": "simple-social",
   "version": "0.1.0",
   "private": true,
+
+  "engines": {
+    "node": ">=20 <21"
+  },
+
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
+
   "dependencies": {
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "@supabase/supabase-js": "^2.52.0"
   },
+
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
