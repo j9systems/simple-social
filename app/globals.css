@@ -317,6 +317,132 @@ button {
   padding: 0.8rem 0.85rem 0;
 }
 
+.comments-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+  z-index: 24;
+}
+
+.comments-sheet-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.comments-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 75dvh;
+  max-height: 75dvh;
+  background: var(--surface);
+  border-radius: 16px 16px 0 0;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  padding: 0.7rem 0.9rem 1rem;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 0.6rem;
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 220ms ease, opacity 220ms ease;
+  z-index: 25;
+}
+
+.comments-sheet.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.comments-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.5rem;
+}
+
+.comments-sheet-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.comments-close-button {
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.comments-post-caption {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.comments-empty-state {
+  color: var(--muted);
+  padding-top: 0.6rem;
+}
+
+.comments-list {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+  min-height: 0;
+}
+
+.comment-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem 0.6rem;
+  align-items: start;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 85%, #fff);
+  padding-bottom: 0.65rem;
+}
+
+.comment-copy {
+  color: var(--foreground);
+  word-break: break-word;
+}
+
+.comment-copy strong {
+  font-weight: 700;
+  margin-right: 0.3rem;
+}
+
+.comment-like-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  height: 1.8rem;
+  border-radius: 999px;
+  padding: 0 0.1rem;
+}
+
+.comment-like-button svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.comment-like-button.is-liked {
+  color: #e0245e;
+}
+
 .upload-form,
 .settings-form {
   margin-top: 0.8rem;

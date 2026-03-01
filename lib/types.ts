@@ -10,6 +10,16 @@ export type FeedPost = {
   comment_count: number;
 };
 
+export type FeedComment = {
+  id: string;
+  post_id: string;
+  user_id: string | null;
+  created_at: string;
+  username: string | null;
+  text: string;
+  like_count: number;
+};
+
 export type ProfileRecord = {
   id: string;
   username: string | null;

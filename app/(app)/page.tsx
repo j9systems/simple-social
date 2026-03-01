@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
-import type { FeedPost } from "@/lib/types";
+import type { FeedComment, FeedPost } from "@/lib/types";
 
 const FEED_FIELDS =
   "id,user_id,image_url,caption,created_at,username,avatar_url,like_count,comment_count";
@@ -45,11 +45,42 @@ function CommentIcon() {
   );
 }
 
+type CommentRow = {
+  id: string;
+  post_id: string;
+  user_id: string | null;
+  created_at: string;
+  content?: string | null;
+  text?: string | null;
+  body?: string | null;
+  comment?: string | null;
+  profiles?: { username?: string | null } | null;
+  username?: string | null;
+};
+
+function normalizeComment(row: CommentRow, likeCount: number): FeedComment {
+  return {
+    id: row.id,
+    post_id: row.post_id,
+    user_id: row.user_id,
+    created_at: row.created_at,
+    username: row.username ?? row.profiles?.username ?? null,
+    text: row.content ?? row.text ?? row.body ?? row.comment ?? "",
+    like_count: likeCount,
+  };
+}
+
 export default function HomePage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({});
+  const [commentsByPostId, setCommentsByPostId] = useState<Record<string, FeedComment[]>>({});
+  const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
+  const [commentsLoadingPostId, setCommentsLoadingPostId] = useState<string | null>(null);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [likedCommentIds, setLikedCommentIds] = useState<Record<string, boolean>>({});
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [likePendingIds, setLikePendingIds] = useState<Record<string, boolean>>({});
+  const [commentLikePendingIds, setCommentLikePendingIds] = useState<Record<string, boolean>>({});
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +172,166 @@ export default function HomePage() {
     setPendingDone();
   }, [likePendingIds, likedPostIds, viewerId]);
 
+  const loadCommentsForPost = useCallback(async (postId: string) => {
+    if (!viewerId) {
+      return;
+    }
+
+    setCommentsLoadingPostId(postId);
+    setCommentsError(null);
+
+    let commentsResponse = await supabase
+      .from("comments")
+      .select("id,post_id,user_id,created_at,content,profiles(username)")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true });
+
+    if (commentsResponse.error) {
+      commentsResponse = await supabase
+        .from("comments")
+        .select("*")
+        .eq("post_id", postId)
+        .order("created_at", { ascending: true });
+    }
+
+    if (commentsResponse.error) {
+      setCommentsError(commentsResponse.error.message);
+      setCommentsLoadingPostId(null);
+      return;
+    }
+
+    const commentRows = ((commentsResponse.data as CommentRow[]) ?? []).filter((row) => Boolean(row?.id));
+    const commentIds = commentRows.map((comment) => comment.id);
+
+    if (commentIds.length === 0) {
+      setCommentsByPostId((current) => ({ ...current, [postId]: [] }));
+      setCommentsLoadingPostId(null);
+      return;
+    }
+
+    const { data: commentLikesData, error: commentLikesError } = await supabase
+      .from("comment_likes")
+      .select("comment_id,user_id")
+      .in("comment_id", commentIds);
+
+    if (commentLikesError) {
+      setCommentsError(commentLikesError.message);
+      setCommentsLoadingPostId(null);
+      return;
+    }
+
+    const likesByCommentId = new Map<string, number>();
+    const viewerLikedLookup: Record<string, boolean> = {};
+    for (const like of commentLikesData ?? []) {
+      const commentId = like.comment_id as string;
+      const likeUserId = like.user_id as string;
+      likesByCommentId.set(commentId, (likesByCommentId.get(commentId) ?? 0) + 1);
+      if (likeUserId === viewerId) {
+        viewerLikedLookup[commentId] = true;
+      }
+    }
+
+    const normalized = commentRows.map((row) => normalizeComment(row, likesByCommentId.get(row.id) ?? 0));
+    setCommentsByPostId((current) => ({ ...current, [postId]: normalized }));
+    setLikedCommentIds((current) => {
+      const next = { ...current };
+      for (const commentId of commentIds) {
+        delete next[commentId];
+      }
+      return { ...next, ...viewerLikedLookup };
+    });
+    setCommentsLoadingPostId(null);
+  }, [viewerId]);
+
+  const openComments = useCallback(async (postId: string) => {
+    setOpenCommentsPostId(postId);
+    await loadCommentsForPost(postId);
+  }, [loadCommentsForPost]);
+
+  const closeComments = useCallback(() => {
+    setOpenCommentsPostId(null);
+    setCommentsError(null);
+    setCommentsLoadingPostId(null);
+  }, []);
+
+  const toggleCommentLike = useCallback(async (commentId: string, postId: string) => {
+    if (!viewerId || commentLikePendingIds[commentId]) {
+      return;
+    }
+
+    const liked = Boolean(likedCommentIds[commentId]);
+    setCommentLikePendingIds((current) => ({ ...current, [commentId]: true }));
+
+    const setPendingDone = () => {
+      setCommentLikePendingIds((current) => {
+        const next = { ...current };
+        delete next[commentId];
+        return next;
+      });
+    };
+
+    if (liked) {
+      setLikedCommentIds((current) => ({ ...current, [commentId]: false }));
+      setCommentsByPostId((current) => ({
+        ...current,
+        [postId]: (current[postId] ?? []).map((comment) =>
+          comment.id === commentId
+            ? { ...comment, like_count: Math.max(0, comment.like_count - 1) }
+            : comment,
+        ),
+      }));
+
+      const { error: unlikeError } = await supabase
+        .from("comment_likes")
+        .delete()
+        .eq("comment_id", commentId)
+        .eq("user_id", viewerId);
+
+      if (unlikeError) {
+        setLikedCommentIds((current) => ({ ...current, [commentId]: true }));
+        setCommentsByPostId((current) => ({
+          ...current,
+          [postId]: (current[postId] ?? []).map((comment) =>
+            comment.id === commentId
+              ? { ...comment, like_count: comment.like_count + 1 }
+              : comment,
+          ),
+        }));
+      }
+
+      setPendingDone();
+      return;
+    }
+
+    setLikedCommentIds((current) => ({ ...current, [commentId]: true }));
+    setCommentsByPostId((current) => ({
+      ...current,
+      [postId]: (current[postId] ?? []).map((comment) =>
+        comment.id === commentId
+          ? { ...comment, like_count: comment.like_count + 1 }
+          : comment,
+      ),
+    }));
+
+    const { error: likeError } = await supabase
+      .from("comment_likes")
+      .insert({ comment_id: commentId, user_id: viewerId });
+
+    if (likeError) {
+      setLikedCommentIds((current) => ({ ...current, [commentId]: false }));
+      setCommentsByPostId((current) => ({
+        ...current,
+        [postId]: (current[postId] ?? []).map((comment) =>
+          comment.id === commentId
+            ? { ...comment, like_count: Math.max(0, comment.like_count - 1) }
+            : comment,
+        ),
+      }));
+    }
+
+    setPendingDone();
+  }, [commentLikePendingIds, likedCommentIds, viewerId]);
+
   const handleImageTap = useCallback((postId: string, eventTimeStamp: number) => {
     const now = eventTimeStamp;
     const lastTapAt = lastImageTapAtRef.current[postId] ?? 0;
@@ -181,6 +372,7 @@ export default function HomePage() {
       if (!userData.user) {
         setError("You need to be logged in to view your feed.");
         setPosts([]);
+        setViewerId(null);
         setLoading(false);
         return;
       }
@@ -273,6 +465,27 @@ export default function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!openCommentsPostId) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeComments();
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeComments, openCommentsPostId]);
+
   const content = useMemo(() => {
     if (!hasSupabaseEnv) {
       return <p>Supabase env vars are missing.</p>;
@@ -345,6 +558,7 @@ export default function HomePage() {
               <button
                 aria-label="Comment"
                 className="feed-action-button feed-action-button-comment"
+                onClick={() => openComments(post.id)}
                 type="button"
               >
                 <CommentIcon />
@@ -358,11 +572,69 @@ export default function HomePage() {
         })}
       </div>
     );
-  }, [avatarVersion, error, handleImageTap, likePendingIds, likedPostIds, loading, posts, toggleLike]);
+  }, [avatarVersion, error, handleImageTap, likePendingIds, likedPostIds, loading, openComments, posts, toggleLike]);
+
+  const openCommentsPost = openCommentsPostId
+    ? posts.find((post) => post.id === openCommentsPostId) ?? null
+    : null;
+  const visibleComments = openCommentsPostId ? commentsByPostId[openCommentsPostId] ?? [] : [];
+  const commentsLoading = openCommentsPostId ? commentsLoadingPostId === openCommentsPostId : false;
 
   return (
     <section className="home-page">
       {content}
+      <div
+        aria-hidden={!openCommentsPostId}
+        className={`comments-sheet-backdrop ${openCommentsPostId ? "is-open" : ""}`}
+        onClick={closeComments}
+      />
+      <section
+        aria-label="Comments"
+        aria-hidden={!openCommentsPostId}
+        aria-modal="true"
+        className={`comments-sheet ${openCommentsPostId ? "is-open" : ""}`}
+        role="dialog"
+      >
+        <header className="comments-sheet-header">
+          <h2>Comments</h2>
+          <button aria-label="Close comments" className="comments-close-button" onClick={closeComments} type="button">
+            ×
+          </button>
+        </header>
+        {openCommentsPost ? (
+          <p className="comments-post-caption">{openCommentsPost.caption ?? "Post comments"}</p>
+        ) : null}
+        {commentsLoading ? <p className="comments-empty-state">Loading comments...</p> : null}
+        {!commentsLoading && commentsError ? <p className="comments-empty-state">{commentsError}</p> : null}
+        {!commentsLoading && !commentsError && visibleComments.length === 0 ? (
+          <p className="comments-empty-state">No comments yet.</p>
+        ) : null}
+        {!commentsLoading && !commentsError && visibleComments.length > 0 ? (
+          <div className="comments-list">
+            {visibleComments.map((comment) => {
+              const liked = Boolean(likedCommentIds[comment.id]);
+              const pending = Boolean(commentLikePendingIds[comment.id]);
+              return (
+                <article className="comment-row" key={comment.id}>
+                  <p className="comment-copy">
+                    <strong>{comment.username ?? "unknown"}</strong> {comment.text}
+                  </p>
+                  <button
+                    aria-label={liked ? "Unlike comment" : "Like comment"}
+                    className={`comment-like-button ${liked ? "is-liked" : ""}`}
+                    disabled={pending}
+                    onClick={() => toggleCommentLike(comment.id, comment.post_id)}
+                    type="button"
+                  >
+                    <HeartIcon filled={liked} />
+                    <span>{comment.like_count}</span>
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
+      </section>
     </section>
   );
 }
