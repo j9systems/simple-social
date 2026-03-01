@@ -16,6 +16,7 @@ export type FeedComment = {
   user_id: string | null;
   created_at: string;
   username: string | null;
+  avatar_url: string | null;
   text: string;
   like_count: number;
 };

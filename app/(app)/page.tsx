@@ -58,8 +58,12 @@ type CommentRow = {
   text?: string | null;
   body?: string | null;
   comment?: string | null;
-  profiles?: { username?: string | null } | Array<{ username?: string | null }> | null;
+  profiles?:
+    | { username?: string | null; avatar_url?: string | null }
+    | Array<{ username?: string | null; avatar_url?: string | null }>
+    | null;
   username?: string | null;
+  avatar_url?: string | null;
 };
 
 function extractCommentUsername(row: CommentRow): string | null {
@@ -74,13 +78,31 @@ function extractCommentUsername(row: CommentRow): string | null {
   return row.profiles?.username ?? null;
 }
 
-function normalizeComment(row: CommentRow, likeCount: number, fallbackUsername?: string | null): FeedComment {
+function extractCommentAvatarUrl(row: CommentRow): string | null {
+  if (row.avatar_url) {
+    return row.avatar_url;
+  }
+
+  if (Array.isArray(row.profiles)) {
+    return row.profiles[0]?.avatar_url ?? null;
+  }
+
+  return row.profiles?.avatar_url ?? null;
+}
+
+function normalizeComment(
+  row: CommentRow,
+  likeCount: number,
+  fallbackUsername?: string | null,
+  fallbackAvatarUrl?: string | null,
+): FeedComment {
   return {
     id: row.id,
     post_id: row.post_id,
     user_id: row.user_id,
     created_at: row.created_at,
     username: extractCommentUsername(row) ?? fallbackUsername ?? null,
+    avatar_url: extractCommentAvatarUrl(row) ?? fallbackAvatarUrl ?? null,
     text: row.content ?? row.text ?? row.body ?? row.comment ?? "",
     like_count: likeCount,
   };
@@ -225,7 +247,7 @@ export default function HomePage() {
 
     let commentsResponse = await supabase
       .from("comments")
-      .select("id,post_id,user_id,created_at,content,profiles(username)")
+      .select("id,post_id,user_id,created_at,content,profiles(username,avatar_url)")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
 
@@ -274,37 +296,43 @@ export default function HomePage() {
       }
     }
 
-    const missingUsernameUserIds = Array.from(
+    const missingProfileUserIds = Array.from(
       new Set(
         commentRows
-          .filter((row) => !extractCommentUsername(row) && Boolean(row.user_id))
+          .filter((row) => (!extractCommentUsername(row) || !extractCommentAvatarUrl(row)) && Boolean(row.user_id))
           .map((row) => row.user_id as string),
       ),
     );
 
-    const usernameByUserId = new Map<string, string>();
-    if (missingUsernameUserIds.length > 0) {
+    const profileByUserId = new Map<string, { username: string | null; avatar_url: string | null }>();
+    if (missingProfileUserIds.length > 0) {
       const { data: profileRows } = await supabase
         .from("profiles")
-        .select("id,username")
-        .in("id", missingUsernameUserIds);
+        .select("id,username,avatar_url")
+        .in("id", missingProfileUserIds);
 
       for (const row of profileRows ?? []) {
         const profileId = row.id as string | undefined;
         const profileUsername = row.username as string | null | undefined;
-        if (profileId && profileUsername) {
-          usernameByUserId.set(profileId, profileUsername);
+        const profileAvatarUrl = row.avatar_url as string | null | undefined;
+        if (profileId) {
+          profileByUserId.set(profileId, {
+            username: profileUsername ?? null,
+            avatar_url: profileAvatarUrl ?? null,
+          });
         }
       }
     }
 
-    const normalized = commentRows.map((row) =>
-      normalizeComment(
+    const normalized = commentRows.map((row) => {
+      const fallbackProfile = row.user_id ? profileByUserId.get(row.user_id) : null;
+      return normalizeComment(
         row,
         likesByCommentId.get(row.id) ?? 0,
-        row.user_id ? usernameByUserId.get(row.user_id) : null,
-      ),
-    );
+        fallbackProfile?.username,
+        fallbackProfile?.avatar_url,
+      );
+    });
     setCommentsByPostId((current) => ({ ...current, [postId]: normalized }));
     setLikedCommentIds((current) => {
       const next = { ...current };
@@ -461,6 +489,7 @@ export default function HomePage() {
       {
         ...insertedComment,
         username: viewerUsername,
+        avatar_url: viewerAvatarUrl,
       },
       0,
     );
@@ -477,7 +506,7 @@ export default function HomePage() {
     );
     setCommentDraftByPostId((current) => ({ ...current, [openCommentsPostId]: "" }));
 
-  }, [commentDraftByPostId, commentSubmitPendingByPostId, openCommentsPostId, viewerId, viewerUsername]);
+  }, [commentDraftByPostId, commentSubmitPendingByPostId, openCommentsPostId, viewerAvatarUrl, viewerId, viewerUsername]);
 
   const handleImageTap = useCallback((postId: string, eventTimeStamp: number) => {
     const now = eventTimeStamp;
@@ -844,7 +873,11 @@ export default function HomePage() {
               </button>
             </div>
 
-            {post.caption ? <p className="feed-caption">{post.caption}</p> : null}
+            {post.caption ? (
+              <p className="feed-caption">
+                {post.username ? <strong>{post.username}</strong> : <strong>Unknown user</strong>} {post.caption}
+              </p>
+            ) : null}
             </article>
           );
         })}
@@ -919,16 +952,33 @@ export default function HomePage() {
               const pending = Boolean(commentLikePendingIds[comment.id]);
               return (
                 <article className="comment-row" key={comment.id}>
-                  <p className="comment-copy">
+                  <div className="comment-main">
                     {comment.username ? (
-                      <Link className="comment-user-link" href={`/u/${comment.username}`}>
-                        <strong>{comment.username}</strong>
+                      <Link aria-label={`${comment.username}'s profile`} className="comment-avatar-link" href={`/u/${comment.username}`}>
+                        <img
+                          alt={`${comment.username} avatar`}
+                          className="avatar comment-avatar"
+                          src={buildAvatarSrc(comment.avatar_url, avatarVersion)}
+                        />
                       </Link>
                     ) : (
-                      <strong>unknown</strong>
-                    )}{" "}
-                    {comment.text}
-                  </p>
+                      <img
+                        alt="Comment author avatar"
+                        className="avatar comment-avatar"
+                        src={buildAvatarSrc(comment.avatar_url, avatarVersion)}
+                      />
+                    )}
+                    <p className="comment-copy">
+                      {comment.username ? (
+                        <Link className="comment-user-link" href={`/u/${comment.username}`}>
+                          <strong>{comment.username}</strong>
+                        </Link>
+                      ) : (
+                        <strong>unknown</strong>
+                      )}{" "}
+                      {comment.text}
+                    </p>
+                  </div>
                   <button
                     aria-label={liked ? "Unlike comment" : "Like comment"}
                     className={`comment-like-button ${liked ? "is-liked" : ""}`}

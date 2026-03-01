@@ -541,7 +541,12 @@ button {
 
 .feed-caption {
   color: var(--foreground);
-  padding: 0.8rem 0.85rem 0;
+  padding: 0.5rem 0.85rem 0;
+}
+
+.feed-caption strong {
+  font-weight: 700;
+  margin-right: 0.28rem;
 }
 
 .comments-sheet-backdrop {
@@ -640,9 +645,29 @@ button {
   padding-bottom: 0.65rem;
 }
 
+.comment-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.comment-avatar-link {
+  display: inline-flex;
+  border-radius: 999px;
+  line-height: 0;
+}
+
+.comment-avatar {
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+}
+
 .comment-copy {
   color: var(--foreground);
   word-break: break-word;
+  padding-top: 0.05rem;
 }
 
 .comment-copy strong {
