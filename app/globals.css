@@ -362,7 +362,7 @@ button {
 
 .feed-list {
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .home-page .feed-list {
@@ -486,6 +486,70 @@ button {
   aspect-ratio: 1 / 1;
   object-fit: cover;
   display: block;
+  cursor: zoom-in;
+}
+
+.image-zoom-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.85);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 0.8rem;
+  align-items: center;
+  justify-items: center;
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+}
+
+.image-zoom-frame {
+  width: min(100%, 56rem);
+  max-height: calc(100dvh - 8rem);
+  overflow: hidden;
+  border-radius: 12px;
+  touch-action: none;
+}
+
+.image-zoom-image {
+  width: 100%;
+  max-height: calc(100dvh - 8rem);
+  object-fit: contain;
+  transform-origin: center;
+  will-change: transform;
+  user-select: none;
+}
+
+.image-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--line) 75%, #fff);
+  background: color-mix(in srgb, #111 80%, #fff);
+}
+
+.image-zoom-button {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--line) 68%, #fff);
+  background: color-mix(in srgb, #fff 15%, transparent);
+  color: #fff;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.image-zoom-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.image-zoom-scale {
+  min-width: 3ch;
+  text-align: center;
+  color: #fff;
+  font-size: 0.9rem;
 }
 
 .feed-actions {
@@ -1039,7 +1103,7 @@ button {
   .home-page .feed-list {
     margin-left: -1.25rem;
     margin-right: -1.25rem;
-    gap: 0;
+    gap: 0.75rem;
   }
 
   .home-page .feed-post {

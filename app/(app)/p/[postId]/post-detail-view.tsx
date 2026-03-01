@@ -8,6 +8,9 @@ import type { FeedComment, FeedPost } from "@/lib/types";
 
 const FEED_FIELDS =
   "id,user_id,image_url,caption,created_at,username,avatar_url,like_count,comment_count";
+const IMAGE_ZOOM_MIN_SCALE = 1;
+const IMAGE_ZOOM_MAX_SCALE = 3;
+const IMAGE_ZOOM_STEP = 0.25;
 
 type PostDetailViewProps = {
   postId: string;
@@ -127,7 +130,10 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
   const lastImageTapAtRef = useRef(0);
+  const imageTapTimeoutRef = useRef<number | null>(null);
 
   const loadComments = useCallback(async () => {
     if (!viewerId) {
@@ -428,19 +434,37 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
     setCommentDraft("");
   }, [commentDraft, commentSubmitPending, post, viewerAvatarUrl, viewerId, viewerUsername]);
 
-  const handleImageTap = useCallback((eventTimeStamp: number) => {
+  const openZoomedImage = useCallback((src: string, alt: string) => {
+    setZoomedImage({ src, alt });
+    setZoomScale(IMAGE_ZOOM_MIN_SCALE);
+  }, []);
+
+  const closeZoomedImage = useCallback(() => {
+    setZoomedImage(null);
+    setZoomScale(IMAGE_ZOOM_MIN_SCALE);
+  }, []);
+
+  const handleImageTap = useCallback((src: string, alt: string, eventTimeStamp: number) => {
     const now = eventTimeStamp;
     const lastTapAt = lastImageTapAtRef.current;
     const isDoubleTap = now - lastTapAt < 300;
 
     if (isDoubleTap) {
+      if (imageTapTimeoutRef.current) {
+        window.clearTimeout(imageTapTimeoutRef.current);
+        imageTapTimeoutRef.current = null;
+      }
       void toggleLike();
       lastImageTapAtRef.current = 0;
       return;
     }
 
     lastImageTapAtRef.current = now;
-  }, [toggleLike]);
+    imageTapTimeoutRef.current = window.setTimeout(() => {
+      openZoomedImage(src, alt);
+      imageTapTimeoutRef.current = null;
+    }, 310);
+  }, [openZoomedImage, toggleLike]);
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -574,6 +598,38 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
     };
   }, [closeComments, commentsOpen]);
 
+  useEffect(() => {
+    if (!zoomedImage) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeZoomedImage();
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeZoomedImage, zoomedImage]);
+
+  useEffect(() => {
+    return () => {
+      if (!imageTapTimeoutRef.current) {
+        return;
+      }
+
+      window.clearTimeout(imageTapTimeoutRef.current);
+      imageTapTimeoutRef.current = null;
+    };
+  }, []);
+
   if (!hasSupabaseEnv) {
     return <p>Supabase env vars are missing.</p>;
   }
@@ -630,7 +686,7 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
           <img
             alt={post.caption ?? "Post image"}
             className="feed-image"
-            onClick={(event) => handleImageTap(event.timeStamp)}
+            onClick={(event) => handleImageTap(post.image_url, post.caption ?? "Post image", event.timeStamp)}
             src={post.image_url}
           />
 
@@ -771,6 +827,56 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
         </form>
         {commentSubmitError ? <p className="comments-empty-state">{commentSubmitError}</p> : null}
       </section>
+      {zoomedImage ? (
+        <div
+          aria-label="Image zoom viewer"
+          aria-modal="true"
+          className="image-zoom-backdrop"
+          onClick={closeZoomedImage}
+          role="dialog"
+        >
+          <div className="image-zoom-frame" onClick={(event) => event.stopPropagation()}>
+            <img
+              alt={zoomedImage.alt}
+              className="image-zoom-image"
+              draggable={false}
+              src={zoomedImage.src}
+              style={{ transform: `scale(${zoomScale})` }}
+            />
+          </div>
+          <div className="image-zoom-controls" onClick={(event) => event.stopPropagation()}>
+            <button
+              aria-label="Zoom out"
+              className="image-zoom-button"
+              disabled={zoomScale <= IMAGE_ZOOM_MIN_SCALE}
+              onClick={() => setZoomScale((current) => Math.max(IMAGE_ZOOM_MIN_SCALE, current - IMAGE_ZOOM_STEP))}
+              type="button"
+            >
+              -
+            </button>
+            <span aria-live="polite" className="image-zoom-scale">
+              {Math.round(zoomScale * 100)}%
+            </span>
+            <button
+              aria-label="Zoom in"
+              className="image-zoom-button"
+              disabled={zoomScale >= IMAGE_ZOOM_MAX_SCALE}
+              onClick={() => setZoomScale((current) => Math.min(IMAGE_ZOOM_MAX_SCALE, current + IMAGE_ZOOM_STEP))}
+              type="button"
+            >
+              +
+            </button>
+            <button
+              aria-label="Close image viewer"
+              className="image-zoom-button"
+              onClick={closeZoomedImage}
+              type="button"
+            >
+              x
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

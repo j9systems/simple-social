@@ -12,6 +12,20 @@ type SearchProfile = ProfileRecord & {
   full_name?: string | null;
 };
 
+function buildDisplayName(profile: SearchProfile) {
+  const fullName = profile.full_name?.trim();
+  if (fullName) {
+    return fullName;
+  }
+
+  const username = profile.username?.trim() ?? "";
+  return username
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [profiles, setProfiles] = useState<SearchProfile[]>([]);
@@ -154,7 +168,7 @@ export default function SearchPage() {
               return null;
             }
 
-            const displayName = profile.full_name?.trim() || profile.username;
+            const displayName = buildDisplayName(profile);
             return (
               <li key={profile.id}>
                 <Link className="search-result-link" href={`/u/${profile.username}`}>
