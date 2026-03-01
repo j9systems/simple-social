@@ -10,6 +10,8 @@ const FEED_FIELDS =
   "id,user_id,image_url,caption,created_at,username,avatar_url,like_count,comment_count";
 const PULL_TRIGGER_DISTANCE = 92;
 const MAX_PULL_DISTANCE = 136;
+const PULL_RESIST_START = 80;
+const PULL_RESIST_FACTOR = 0.35;
 
 function formatDate(isoDate: string) {
   return new Date(isoDate).toLocaleString(undefined, {
@@ -643,7 +645,7 @@ export default function HomePage() {
       }
       pullActiveRef.current = true;
       pullStartYRef.current = event.touches[0]?.clientY ?? 0;
-      setIsPullingFeed(true);
+      setIsPullingFeed(false);
     };
 
     const onTouchMove = (event: TouchEvent) => {
@@ -660,12 +662,21 @@ export default function HomePage() {
       const currentY = event.touches[0]?.clientY ?? pullStartYRef.current;
       const rawDistance = currentY - pullStartYRef.current;
       if (rawDistance <= 0) {
+        setIsPullingFeed(false);
         setPullDistance(0);
         return;
       }
 
-      event.preventDefault();
-      const resistedDistance = Math.min(MAX_PULL_DISTANCE, rawDistance * 0.55);
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+      setIsPullingFeed(true);
+      const resistedDistance = Math.min(
+        MAX_PULL_DISTANCE,
+        rawDistance <= PULL_RESIST_START
+          ? rawDistance
+          : PULL_RESIST_START + (rawDistance - PULL_RESIST_START) * PULL_RESIST_FACTOR,
+      );
       setPullDistance(resistedDistance);
     };
 
@@ -684,7 +695,8 @@ export default function HomePage() {
       }
 
       setIsRefreshingFeed(true);
-      setPullDistance(PULL_TRIGGER_DISTANCE);
+      setIsPullingFeed(false);
+      setPullDistance(0);
       setFeedRefreshTick((current) => current + 1);
     };
 
@@ -721,7 +733,9 @@ export default function HomePage() {
     };
   }, [isRefreshingFeed, loading]);
 
-  const pullProgress = Math.max(0, Math.min(1, pullDistance / PULL_TRIGGER_DISTANCE));
+  const pullProgress = isRefreshingFeed
+    ? 1
+    : Math.max(0, Math.min(1, pullDistance / PULL_TRIGGER_DISTANCE));
 
   const content = useMemo(() => {
     if (!hasSupabaseEnv) {
@@ -825,8 +839,10 @@ export default function HomePage() {
   const commentSubmitPending = openCommentsPostId ? Boolean(commentSubmitPendingByPostId[openCommentsPostId]) : false;
   const pullRefreshRingStyle = { "--pull-progress": `${pullProgress}` } as CSSProperties;
 
+  const feedContentStyle = { transform: `translateY(${pullDistance}px)` } as CSSProperties;
+
   return (
-    <section className="home-page" style={{ paddingTop: `${pullDistance}px` }}>
+    <section className="home-page">
       <div
         aria-hidden={!(isPullingFeed || isRefreshingFeed)}
         aria-live="polite"
@@ -842,7 +858,12 @@ export default function HomePage() {
           {isRefreshingFeed ? "Refreshing feed..." : "Pull down to refresh"}
         </span>
       </div>
-      {content}
+      <div
+        className={`home-feed-content ${isPullingFeed ? "is-pulling" : ""}`}
+        style={feedContentStyle}
+      >
+        {content}
+      </div>
       <div
         aria-hidden={!openCommentsPostId}
         className={`comments-sheet-backdrop ${openCommentsPostId ? "is-open" : ""}`}

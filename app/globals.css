@@ -52,8 +52,9 @@ p {
   position: sticky;
   top: 0;
   z-index: 10;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   padding: 0.8rem 1.25rem;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--background) 92%, white);
@@ -64,7 +65,7 @@ p {
   width: min(180px, 56vw);
   height: auto;
   display: block;
-  margin-inline: auto;
+  margin-inline: 0;
 }
 
 .brand-logo-home {
@@ -254,9 +255,15 @@ button {
 }
 
 .home-page {
-  margin-top: -1.25rem;
-  transition: padding-top 180ms ease;
-  will-change: padding-top;
+  position: relative;
+}
+
+.home-feed-content {
+  will-change: transform;
+}
+
+.home-feed-content:not(.is-pulling) {
+  transition: transform 180ms ease;
 }
 
 .pull-refresh-indicator {
