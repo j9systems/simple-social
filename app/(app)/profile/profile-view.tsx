@@ -216,6 +216,33 @@ export default function ProfileView({ username }: ProfileViewProps) {
     setPendingFollowAction(false);
   };
 
+  if (!hasSupabaseEnv) {
+    return (
+      <section className="profile-page">
+        <p>Supabase env vars are missing.</p>
+      </section>
+    );
+  }
+
+  if (loading) {
+    return (
+      <section className="profile-page">
+        <div aria-live="polite" className="feed-loading" role="status">
+          <span aria-hidden="true" className="loading-spinner" />
+          <span className="visually-hidden">Loading profile...</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="profile-page">
+        <p>{error}</p>
+      </section>
+    );
+  }
+
   return (
     <section className="profile-page">
       <div className="profile-header-area">
@@ -250,10 +277,7 @@ export default function ProfileView({ username }: ProfileViewProps) {
         </div>
       ) : null}
 
-      {!hasSupabaseEnv ? <p>Supabase env vars are missing.</p> : null}
-      {loading ? <p>Loading profile...</p> : null}
-      {error ? <p>{error}</p> : null}
-      {!loading && !error && posts.length === 0 ? <p>No posts yet.</p> : null}
+      {posts.length === 0 ? <p>No posts yet.</p> : null}
 
       <hr aria-hidden="true" className="profile-separator" />
 

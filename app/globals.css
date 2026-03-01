@@ -442,7 +442,7 @@ button {
 }
 
 .feed-post {
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 14px;
   background: var(--surface);
   overflow: hidden;
@@ -492,7 +492,7 @@ button {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  padding: 0.65rem 0.85rem 0.35rem;
+  padding: 0.65rem 0.85rem 0.1rem;
 }
 
 .feed-action-button {
@@ -541,7 +541,7 @@ button {
 
 .feed-caption {
   color: var(--foreground);
-  padding: 0.5rem 0.85rem 0;
+  padding: 0.12rem 0.85rem 0;
 }
 
 .feed-caption strong {
@@ -1047,9 +1047,6 @@ button {
     border-radius: 0;
   }
 
-  .home-page .feed-post + .feed-post {
-    border-top: 1px solid var(--line);
-  }
 }
 
 @keyframes spin {
