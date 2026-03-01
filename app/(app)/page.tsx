@@ -340,22 +340,19 @@ export default function HomePage() {
                 type="button"
               >
                 <HeartIcon filled={liked} />
+                <span className="feed-action-count">{displayedLikeCount}</span>
               </button>
               <button
                 aria-label="Comment"
-                className="feed-action-button"
+                className="feed-action-button feed-action-button-comment"
                 type="button"
               >
                 <CommentIcon />
+                <span className="feed-action-count">{post.comment_count}</span>
               </button>
             </div>
 
             {post.caption ? <p className="feed-caption">{post.caption}</p> : null}
-
-            <footer className="feed-stats">
-              <span>{displayedLikeCount} likes</span>
-              <span>{post.comment_count} comments</span>
-            </footer>
             </article>
           );
         })}
