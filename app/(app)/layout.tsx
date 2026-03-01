@@ -452,33 +452,35 @@ export default function AppLayout({
       <main className={isProfilePage ? "page-wrap page-wrap-no-top-bar" : "page-wrap"}>{children}</main>
 
       <nav aria-label="Primary" className="tab-bar">
-        {tabs.map((tab) => (
-          <Link
-            className={
-              pathname === tab.href || pathname.startsWith(`${tab.href}/`)
-                ? "tab-link active"
-                : "tab-link"
-            }
-            href={tab.href}
-            key={tab.href}
-            onClick={(event) => {
-              handleTabClick(event, tab.href);
-            }}
-          >
-            <span className="tab-icon">
-              {tab.href === "/profile" ? (
-                <img
-                  alt="Your profile"
-                  className="tab-profile-avatar"
-                  src={buildAvatarSrc(viewerTabAvatarUrl, avatarVersion)}
-                />
-              ) : (
-                tab.icon
-              )}
-            </span>
-            <span className="tab-label">{tab.label}</span>
-          </Link>
-        ))}
+        <div className="tab-bar-inner">
+          {tabs.map((tab) => (
+            <Link
+              className={
+                pathname === tab.href || pathname.startsWith(`${tab.href}/`)
+                  ? "tab-link active"
+                  : "tab-link"
+              }
+              href={tab.href}
+              key={tab.href}
+              onClick={(event) => {
+                handleTabClick(event, tab.href);
+              }}
+            >
+              <span className="tab-icon">
+                {tab.href === "/profile" ? (
+                  <img
+                    alt="Your profile"
+                    className="tab-profile-avatar"
+                    src={buildAvatarSrc(viewerTabAvatarUrl, avatarVersion)}
+                  />
+                ) : (
+                  tab.icon
+                )}
+              </span>
+              <span className="tab-label">{tab.label}</span>
+            </Link>
+          ))}
+        </div>
       </nav>
     </div>
   );

@@ -8,6 +8,8 @@
   --line: #dad4ca;
   --accent: #0d77d9;
   --tab-active-icon: #5f259f;
+  --tabbar-bg: #ffffff;
+  --tabbar-height: 64px;
 }
 
 :root[data-theme="dark"] {
@@ -18,6 +20,7 @@
   --line: #32363a;
   --accent: #4da0ff;
   --tab-active-icon: #b995ff;
+  --tabbar-bg: #1b1d1f;
 }
 
 @theme inline {
@@ -60,8 +63,8 @@ p {
 .page-wrap {
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem calc(6.25rem + constant(safe-area-inset-bottom));
-  padding: 1.25rem 1.25rem calc(6.25rem + env(safe-area-inset-bottom));
+  padding: 1.25rem 1.25rem calc(var(--tabbar-height, 64px) + constant(safe-area-inset-bottom));
+  padding: 1.25rem 1.25rem calc(var(--tabbar-height, 64px) + env(safe-area-inset-bottom));
 }
 
 .page-wrap-no-top-bar {
@@ -72,8 +75,6 @@ p {
   position: relative;
   min-height: 100vh;
   min-height: 100svh;
-  padding-bottom: calc(5rem + constant(safe-area-inset-bottom));
-  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
 
 .top-bar {
@@ -241,25 +242,29 @@ p {
   position: fixed;
   left: 0;
   right: 0;
-  width: 100%;
   bottom: 0;
-  display: grid;
-  justify-items: stretch;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid color-mix(in srgb, var(--line) 86%, #fff);
-  background: color-mix(in srgb, var(--surface) 94%, #f4f1ea);
+  width: 100%;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  background: var(--tabbar-bg, #fff);
   box-shadow: 0 -2px 8px rgba(30, 29, 26, 0.08);
-  padding-top: 0.25rem;
   padding-right: env(safe-area-inset-right);
-  padding-bottom: calc(constant(safe-area-inset-bottom) + 0.4rem);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 0.4rem);
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
-  z-index: 15;
+  z-index: 1000;
+}
+
+.tab-bar-inner {
+  display: flex;
+  height: var(--tabbar-height, 64px);
+  padding: 10px 16px;
+  background: transparent;
 }
 
 .tab-link {
   position: relative;
   display: flex;
+  flex: 1 1 0;
   width: 100%;
   flex-direction: column;
   align-items: center;
@@ -272,7 +277,8 @@ p {
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.1;
-  min-height: 3.2rem;
+  height: 100%;
+  min-height: 0;
   margin: 0;
   border-radius: 999px;
   transition: color 140ms ease, transform 180ms ease;
@@ -1247,11 +1253,7 @@ button {
 
 @media (min-width: 769px) {
   .page-wrap {
-    padding-bottom: 6.5rem;
-  }
-
-  .app-shell {
-    padding-bottom: 5.75rem;
+    padding-bottom: calc(var(--tabbar-height, 64px) + 1.25rem);
   }
 
   .tab-bar {
@@ -1259,55 +1261,43 @@ button {
     right: auto;
     transform: translateX(-50%);
     width: min(480px, calc(100% - 1rem));
-    bottom: 0.8rem;
+    bottom: 0;
     border: 1px solid var(--line);
+    border-top: 1px solid var(--line);
     border-radius: 18px;
-    padding: 0.25rem;
+    padding: 0;
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+  }
+
+  .tab-bar-inner {
+    padding: 0.25rem;
   }
 
   .tab-link {
     margin: 0;
-    min-height: 3.25rem;
+    min-height: 0;
   }
 }
 
 @media (max-width: 768px) {
   .page-wrap {
-    padding-bottom: calc(6.25rem + constant(safe-area-inset-bottom));
-    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
-  }
-
-  .app-shell {
-    padding-bottom: calc(5.25rem + constant(safe-area-inset-bottom));
-    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--tabbar-height, 64px) + constant(safe-area-inset-bottom));
+    padding-bottom: calc(var(--tabbar-height, 64px) + env(safe-area-inset-bottom));
   }
 
   .tab-bar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    width: 100%;
-    bottom: 0;
-    min-height: calc(4.25rem + env(safe-area-inset-bottom));
     border: 0;
     border-top: 1px solid var(--line);
     border-radius: 0;
-    padding-top: 0.25rem;
-    padding-right: env(safe-area-inset-right);
-    padding-bottom: calc(constant(safe-area-inset-bottom) + 0.4rem);
-    padding-bottom: calc(env(safe-area-inset-bottom) + 0.4rem);
-    padding-left: env(safe-area-inset-left);
-    overflow: visible;
     box-shadow: none;
-    background: var(--surface);
+    background: var(--tabbar-bg, #fff);
+  }
+
+  .tab-bar-inner {
+    padding: 10px 16px;
   }
 
   .tab-link {
-    margin: 0;
-    min-height: 3.7rem;
-    justify-content: flex-start;
-    padding-top: 0.74rem;
     border-radius: 0;
   }
 
