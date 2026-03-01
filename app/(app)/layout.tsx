@@ -83,6 +83,8 @@ export default function AppLayout({
   const pathname = usePathname();
   const router = useRouter();
   const isHomeFeed = pathname === "/";
+  const isProfilePage = pathname === "/profile";
+  const useHomeBrandTreatment = pathname === "/" || pathname === "/search" || pathname === "/upload";
   const [checkingAuth, setCheckingAuth] = useState(hasSupabaseEnv);
   const [session, setSession] = useState<Session | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -335,80 +337,82 @@ export default function AppLayout({
 
   return (
     <div className="app-shell">
-      <header className={`top-bar ${isHomeFeed && isTopBarHidden ? "is-hidden-on-scroll" : ""}`}>
-        <Image
-          alt="Simple Social"
-          className={pathname === "/" ? "brand-logo brand-logo-home" : "brand-logo"}
-          height={64}
-          priority
-          src="https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg"
-          width={320}
-        />
-        <button
-          aria-expanded={notificationsOpen}
-          aria-haspopup="dialog"
-          aria-label="Open notifications"
-          className="icon-button notifications-button"
-          onClick={() => {
-            void openNotifications();
-          }}
-          ref={notificationsButtonRef}
-          type="button"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v2.6c0 .7-.2 1.4-.7 2l-1.5 2.2a1 1 0 0 0 .8 1.5h13.8a1 1 0 0 0 .8-1.5l-1.5-2.2c-.5-.6-.7-1.3-.7-2V9A5.5 5.5 0 0 0 12 3.5Zm0 17.2a2.6 2.6 0 0 0 2.5-2h-5a2.6 2.6 0 0 0 2.5 2Z" />
-          </svg>
-          {unreadNotificationsCount > 0 ? <span className="notification-badge">{unreadNotificationsCount}</span> : null}
-        </button>
-        <section
-          aria-hidden={!notificationsOpen}
-          aria-label="Notifications"
-          className={`notifications-panel ${notificationsOpen ? "is-open" : ""}`}
-          ref={notificationsPanelRef}
-          role="dialog"
-        >
-          <header className="notifications-panel-header">
-            <h2>Notifications</h2>
-          </header>
-          {notificationsDebugMessage ? <p className="notifications-error">{notificationsDebugMessage}</p> : null}
-          {notificationsLoading ? <p className="notifications-empty">Loading notifications...</p> : null}
-          {!notificationsLoading && notifications.length === 0 ? (
-            <p className="notifications-empty">No notifications yet.</p>
-          ) : null}
-          {!notificationsLoading && notifications.length > 0 ? (
-            <div className="notifications-list">
-              {notifications.map((notification) => (
-                <button
-                  className={`notification-item ${!notification.read_at ? "is-unread" : ""}`}
-                  key={notification.id}
-                  onClick={() => {
-                    void handleNotificationClick(notification);
-                  }}
-                  type="button"
-                >
-                  {notification.type === "follow" ? (
-                    <img
-                      alt={`${notification.actor_username ?? "User"} avatar`}
-                      className="notification-avatar-thumb"
-                      src={notification.actor_avatar_url ?? PWA_ICON_URL}
-                    />
-                  ) : (
-                    <img
-                      alt="Related post thumbnail"
-                      className="notification-post-thumb"
-                      src={notification.post_image_url ?? PWA_ICON_URL}
-                    />
-                  )}
-                  <span className="notification-copy">
-                    <span>{getNotificationMessage(notification)}</span>
-                    <time dateTime={notification.created_at}>{formatNotificationDate(notification.created_at)}</time>
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </section>
-      </header>
+      {!isProfilePage ? (
+        <header className={`top-bar ${isHomeFeed && isTopBarHidden ? "is-hidden-on-scroll" : ""}`}>
+          <Image
+            alt="Simple Social"
+            className={useHomeBrandTreatment ? "brand-logo brand-logo-home" : "brand-logo"}
+            height={64}
+            priority
+            src="https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg"
+            width={320}
+          />
+          <button
+            aria-expanded={notificationsOpen}
+            aria-haspopup="dialog"
+            aria-label="Open notifications"
+            className="icon-button notifications-button"
+            onClick={() => {
+              void openNotifications();
+            }}
+            ref={notificationsButtonRef}
+            type="button"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v2.6c0 .7-.2 1.4-.7 2l-1.5 2.2a1 1 0 0 0 .8 1.5h13.8a1 1 0 0 0 .8-1.5l-1.5-2.2c-.5-.6-.7-1.3-.7-2V9A5.5 5.5 0 0 0 12 3.5Zm0 17.2a2.6 2.6 0 0 0 2.5-2h-5a2.6 2.6 0 0 0 2.5 2Z" />
+            </svg>
+            {unreadNotificationsCount > 0 ? <span className="notification-badge">{unreadNotificationsCount}</span> : null}
+          </button>
+          <section
+            aria-hidden={!notificationsOpen}
+            aria-label="Notifications"
+            className={`notifications-panel ${notificationsOpen ? "is-open" : ""}`}
+            ref={notificationsPanelRef}
+            role="dialog"
+          >
+            <header className="notifications-panel-header">
+              <h2>Notifications</h2>
+            </header>
+            {notificationsDebugMessage ? <p className="notifications-error">{notificationsDebugMessage}</p> : null}
+            {notificationsLoading ? <p className="notifications-empty">Loading notifications...</p> : null}
+            {!notificationsLoading && notifications.length === 0 ? (
+              <p className="notifications-empty">No notifications yet.</p>
+            ) : null}
+            {!notificationsLoading && notifications.length > 0 ? (
+              <div className="notifications-list">
+                {notifications.map((notification) => (
+                  <button
+                    className={`notification-item ${!notification.read_at ? "is-unread" : ""}`}
+                    key={notification.id}
+                    onClick={() => {
+                      void handleNotificationClick(notification);
+                    }}
+                    type="button"
+                  >
+                    {notification.type === "follow" ? (
+                      <img
+                        alt={`${notification.actor_username ?? "User"} avatar`}
+                        className="notification-avatar-thumb"
+                        src={notification.actor_avatar_url ?? PWA_ICON_URL}
+                      />
+                    ) : (
+                      <img
+                        alt="Related post thumbnail"
+                        className="notification-post-thumb"
+                        src={notification.post_image_url ?? PWA_ICON_URL}
+                      />
+                    )}
+                    <span className="notification-copy">
+                      <span>{getNotificationMessage(notification)}</span>
+                      <time dateTime={notification.created_at}>{formatNotificationDate(notification.created_at)}</time>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        </header>
+      ) : null}
 
       <main className="page-wrap">{children}</main>
 

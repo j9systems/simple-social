@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Simple Social",
   description: "Simple social app with Supabase auth",
   manifest: "/manifest.webmanifest?v=20260301c",
+  themeColor: "#f7f7f5",
   icons: {
     icon: [
       {
@@ -46,10 +47,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style" />
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var theme=localStorage.getItem('simple-social-theme');document.documentElement.dataset.theme=theme==='dark'?'dark':'light';}catch(_){document.documentElement.dataset.theme='light';}})();",
+              "(function(){try{var theme=localStorage.getItem('simple-social-theme')==='dark'?'dark':'light';var color=theme==='dark'?'#131415':'#f7f7f5';document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;var m=document.querySelector('meta[name=\"theme-color\"]');if(m){m.setAttribute('content',color);}}catch(_){document.documentElement.dataset.theme='light';document.documentElement.style.colorScheme='light';var m=document.querySelector('meta[name=\"theme-color\"]');if(m){m.setAttribute('content','#f7f7f5');}}})();",
           }}
         />
       </head>
