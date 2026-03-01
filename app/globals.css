@@ -60,6 +60,7 @@ p {
 .page-wrap {
   width: min(760px, 100%);
   margin: 0 auto;
+  padding: 1.25rem 1.25rem calc(6.25rem + constant(safe-area-inset-bottom));
   padding: 1.25rem 1.25rem calc(6.25rem + env(safe-area-inset-bottom));
 }
 
@@ -69,7 +70,9 @@ p {
 
 .app-shell {
   position: relative;
+  min-height: 100vh;
   min-height: 100svh;
+  padding-bottom: calc(5rem + constant(safe-area-inset-bottom));
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
 
@@ -1271,10 +1274,12 @@ button {
 
 @media (max-width: 768px) {
   .page-wrap {
+    padding-bottom: calc(6.25rem + constant(safe-area-inset-bottom));
     padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
   }
 
   .app-shell {
+    padding-bottom: calc(5.25rem + constant(safe-area-inset-bottom));
     padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
   }
 
