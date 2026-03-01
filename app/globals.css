@@ -1278,3 +1278,8 @@ button {
   }
 }
 
+/* TEMP DEBUG — remove after testing */
+body { outline: 6px solid red !important; }
+nav { outline: 6px solid lime !important; }
+#tabbar { outline: 6px solid blue !important; }
+
