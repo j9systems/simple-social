@@ -34,10 +34,11 @@ function CommentIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <path
-        d="M4.5 5.3A2.8 2.8 0 0 1 7.3 2.5h9.4a2.8 2.8 0 0 1 2.8 2.8v8a2.8 2.8 0 0 1-2.8 2.8h-7l-4 3.4a.7.7 0 0 1-1.2-.5v-2.9A2.8 2.8 0 0 1 1.7 13.3v-8A2.8 2.8 0 0 1 4.5 5.3Z"
+        d="M12 3.2c4.9 0 8.8 3.2 8.8 7.2s-3.9 7.2-8.8 7.2c-1 0-2-.1-2.9-.4l-3.6 2.1a.8.8 0 0 1-1.2-.8l.5-3.3c-1-1.3-1.6-2.9-1.6-4.8 0-4 3.9-7.2 8.8-7.2Z"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.9"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>
@@ -47,17 +48,98 @@ function CommentIcon() {
 export default function HomePage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({});
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [likePendingIds, setLikePendingIds] = useState<Record<string, boolean>>({});
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
   const lastImageTapAtRef = useRef<Record<string, number>>({});
 
-  const toggleLike = useCallback((postId: string) => {
-    setLikedPostIds((current) => ({
-      ...current,
-      [postId]: !current[postId],
-    }));
-  }, []);
+  const toggleLike = useCallback(async (postId: string) => {
+    if (!viewerId || likePendingIds[postId]) {
+      return;
+    }
+
+    const liked = Boolean(likedPostIds[postId]);
+    setLikePendingIds((current) => ({ ...current, [postId]: true }));
+
+    const setPendingDone = () => {
+      setLikePendingIds((current) => {
+        const next = { ...current };
+        delete next[postId];
+        return next;
+      });
+    };
+
+    if (liked) {
+      setLikedPostIds((current) => ({ ...current, [postId]: false }));
+      setPosts((current) =>
+        current.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                like_count: Math.max(0, post.like_count - 1),
+              }
+            : post,
+        ),
+      );
+
+      const { error: unlikeError } = await supabase
+        .from("post_likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", viewerId);
+
+      if (unlikeError) {
+        setLikedPostIds((current) => ({ ...current, [postId]: true }));
+        setPosts((current) =>
+          current.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  like_count: post.like_count + 1,
+                }
+              : post,
+          ),
+        );
+      }
+
+      setPendingDone();
+      return;
+    }
+
+    setLikedPostIds((current) => ({ ...current, [postId]: true }));
+    setPosts((current) =>
+      current.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              like_count: post.like_count + 1,
+            }
+          : post,
+      ),
+    );
+
+    const { error: likeError } = await supabase
+      .from("post_likes")
+      .insert({ post_id: postId, user_id: viewerId });
+
+    if (likeError) {
+      setLikedPostIds((current) => ({ ...current, [postId]: false }));
+      setPosts((current) =>
+        current.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                like_count: Math.max(0, post.like_count - 1),
+              }
+            : post,
+        ),
+      );
+    }
+
+    setPendingDone();
+  }, [likePendingIds, likedPostIds, viewerId]);
 
   const handleImageTap = useCallback((postId: string, eventTimeStamp: number) => {
     const now = eventTimeStamp;
@@ -104,6 +186,7 @@ export default function HomePage() {
       }
 
       const viewerId = userData.user.id;
+      setViewerId(viewerId);
       const { data: followsData, error: followsError } = await supabase
         .from("follows")
         .select("following_id")
@@ -139,7 +222,32 @@ export default function HomePage() {
         setError(feedError.message);
         setPosts([]);
       } else {
-        setPosts((data as FeedPost[]) ?? []);
+        const nextPosts = (data as FeedPost[]) ?? [];
+        setPosts(nextPosts);
+
+        if (nextPosts.length > 0) {
+          const postIds = nextPosts.map((post) => post.id);
+          const { data: likesData, error: likesError } = await supabase
+            .from("post_likes")
+            .select("post_id")
+            .eq("user_id", viewerId)
+            .in("post_id", postIds);
+
+          if (!mounted) {
+            return;
+          }
+
+          if (likesError) {
+            setError(likesError.message);
+          } else {
+            const likedLookup = Object.fromEntries(
+              (likesData ?? []).map((row) => [row.post_id as string, true]),
+            );
+            setLikedPostIds(likedLookup);
+          }
+        } else {
+          setLikedPostIds({});
+        }
       }
 
       setLoading(false);
@@ -183,7 +291,8 @@ export default function HomePage() {
       <div className="feed-list">
         {posts.map((post) => {
           const liked = Boolean(likedPostIds[post.id]);
-          const displayedLikeCount = post.like_count + (liked ? 1 : 0);
+          const likePending = Boolean(likePendingIds[post.id]);
+          const displayedLikeCount = post.like_count;
 
           return (
             <article className="feed-post" key={post.id}>
@@ -226,6 +335,7 @@ export default function HomePage() {
               <button
                 aria-label={liked ? "Unlike post" : "Like post"}
                 className={`feed-action-button ${liked ? "is-liked" : ""}`}
+                disabled={likePending}
                 onClick={() => toggleLike(post.id)}
                 type="button"
               >
@@ -251,7 +361,7 @@ export default function HomePage() {
         })}
       </div>
     );
-  }, [avatarVersion, error, handleImageTap, likedPostIds, loading, posts, toggleLike]);
+  }, [avatarVersion, error, handleImageTap, likePendingIds, likedPostIds, loading, posts, toggleLike]);
 
   return (
     <section className="home-page">
