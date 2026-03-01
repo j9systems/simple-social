@@ -54,7 +54,7 @@ export default function SettingsPage() {
         setSupportsFullNameColumn(false);
         const fallbackProfileResponse = await supabase
           .from("profiles")
-          .select("id,username,avatar_url")
+          .select("id,username,avatar_url,full_name")
           .eq("id", data.user.id)
           .maybeSingle();
         profileData = fallbackProfileResponse.data;
@@ -112,7 +112,7 @@ export default function SettingsPage() {
 
     const { data: takenData, error: takenError } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id,username,avatar_url,full_name")
       .ilike("username", nextUsername)
       .neq("id", userId)
       .limit(1);
@@ -160,7 +160,7 @@ export default function SettingsPage() {
       .from("profiles")
       .update(profileUpdatePayload)
       .eq("id", userId)
-      .select("id")
+      .select("id,username,avatar_url,full_name")
       .maybeSingle();
 
     if (
@@ -176,7 +176,7 @@ export default function SettingsPage() {
           avatar_url: avatarUrl,
         })
         .eq("id", userId)
-        .select("id")
+        .select("id,username,avatar_url,full_name")
         .maybeSingle();
     }
 

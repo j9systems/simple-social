@@ -14,5 +14,5 @@ export type ProfileRecord = {
   id: string;
   username: string | null;
   avatar_url: string | null;
-  full_name?: string | null;
+  full_name: string | null;
 };
