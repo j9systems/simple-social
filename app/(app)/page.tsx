@@ -363,7 +363,7 @@ export default function HomePage() {
       const insertResponse = await supabase
         .from("comments")
         .insert({ ...payloadBase, [columnName]: nextText })
-        .select("id,post_id,user_id,created_at,content,text,body,comment")
+        .select("*")
         .single();
 
       if (!insertResponse.error && insertResponse.data) {
