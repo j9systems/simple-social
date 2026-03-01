@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Simple Social",
   description: "Simple social app with Supabase auth",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.webmanifest?v=20260301",
   icons: {
     icon: [
       {

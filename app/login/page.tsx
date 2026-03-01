@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
@@ -74,6 +75,14 @@ export default function LoginPage() {
   return (
     <main className="page-wrap auth-page">
       <section className="card">
+        <Image
+          alt="Simple Social"
+          className="auth-wordmark"
+          height={64}
+          priority
+          src="https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg"
+          width={320}
+        />
         <h1>Login</h1>
         <p>Sign in to access Simple Social.</p>
         {!hasSupabaseEnv ? (

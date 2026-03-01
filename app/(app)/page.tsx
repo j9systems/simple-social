@@ -625,7 +625,12 @@ export default function HomePage() {
       return <p>Supabase env vars are missing.</p>;
     }
     if (loading) {
-      return <p>Loading feed...</p>;
+      return (
+        <div aria-live="polite" className="feed-loading" role="status">
+          <span aria-hidden="true" className="loading-spinner" />
+          <span className="visually-hidden">Loading feed...</span>
+        </div>
+      );
     }
     if (error) {
       return <p>{error}</p>;
