@@ -133,6 +133,16 @@ p {
   padding: 0.9rem 0.85rem;
 }
 
+.notifications-error {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, #b31a1a 9%, #fff);
+  color: #8f1313;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .notifications-list {
   display: grid;
   overflow-y: auto;

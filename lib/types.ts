@@ -32,8 +32,8 @@ export type NotificationType = "follow" | "post_like" | "comment" | "comment_lik
 export type NotificationItem = {
   id: string;
   type: NotificationType;
-  recipient_user_id: string;
-  actor_user_id: string;
+  recipient_profile_id: string;
+  actor_profile_id: string | null;
   actor_username: string | null;
   actor_avatar_url: string | null;
   post_id: string | null;

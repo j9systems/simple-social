@@ -12,13 +12,13 @@ type CreateNotificationInput = {
 type NotificationRow = {
   id: string;
   type: NotificationType;
-  recipient_user_id: string;
-  actor_user_id: string;
+  recipient_profile_id: string;
+  actor_profile_id: string | null;
   post_id?: string | null;
   comment_id?: string | null;
+  is_read: boolean;
   created_at: string;
   read_at?: string | null;
-  clicked_at?: string | null;
 };
 
 type ProfileRow = {
@@ -32,11 +32,13 @@ type PostRow = {
   image_url: string | null;
 };
 
-const NOTIFICATION_SELECT_CANDIDATES: readonly string[] = [
-  "id,type,recipient_user_id,actor_user_id,post_id,comment_id,created_at,read_at",
-  "id,type,recipient_user_id,actor_user_id,post_id,comment_id,created_at,clicked_at",
-  "id,type,recipient_user_id,actor_user_id,post_id,comment_id,created_at",
-];
+export type ListNotificationsResult = {
+  items: NotificationItem[];
+  errorMessage: string | null;
+};
+
+const NOTIFICATION_SELECT =
+  "id,type,recipient_profile_id,actor_profile_id,post_id,comment_id,is_read,created_at,read_at";
 
 export async function createNotification({
   type,
@@ -51,8 +53,8 @@ export async function createNotification({
 
   const { error } = await supabase.from("notifications").insert({
     type,
-    recipient_user_id: recipientUserId,
-    actor_user_id: actorUserId,
+    recipient_profile_id: recipientUserId,
+    actor_profile_id: actorUserId,
     post_id: postId,
     comment_id: commentId,
   });
@@ -63,33 +65,25 @@ export async function createNotification({
   }
 }
 
-export async function listNotifications(recipientUserId: string, limit = 40): Promise<NotificationItem[]> {
-  let rows: NotificationRow[] = [];
-  let queryError: string | null = null;
+export async function listNotifications(recipientUserId: string, limit = 40): Promise<ListNotificationsResult> {
+  const response = await supabase
+    .from("notifications")
+    .select(NOTIFICATION_SELECT)
+    .eq("recipient_profile_id", recipientUserId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
-  for (const selectColumns of NOTIFICATION_SELECT_CANDIDATES) {
-    const response = await supabase
-      .from("notifications")
-      .select(selectColumns)
-      .eq("recipient_user_id", recipientUserId)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (!response.error) {
-      rows = (response.data as unknown as NotificationRow[] | null) ?? [];
-      queryError = null;
-      break;
-    }
-
-    queryError = response.error.message;
+  if (response.error) {
+    const message = `Failed to load notifications: ${response.error.message}`;
+    console.error(message);
+    return {
+      items: [],
+      errorMessage: message,
+    };
   }
 
-  if (queryError) {
-    console.error("Failed to load notifications", queryError);
-    return [];
-  }
-
-  const actorIds = Array.from(new Set(rows.map((row) => row.actor_user_id).filter(Boolean)));
+  const rows = (response.data as unknown as NotificationRow[] | null) ?? [];
+  const actorIds = Array.from(new Set(rows.map((row) => row.actor_profile_id).filter(Boolean))) as string[];
   const postIds = Array.from(new Set(rows.map((row) => row.post_id).filter(Boolean))) as string[];
 
   const [profilesResponse, postsResponse] = await Promise.all([
@@ -97,15 +91,20 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
       ? supabase.from("profiles").select("id,username,avatar_url").in("id", actorIds)
       : Promise.resolve({ data: [], error: null }),
     postIds.length
-      ? supabase.from("feed_posts").select("id,image_url").in("id", postIds)
+      ? supabase.from("posts").select("id,image_url").in("id", postIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
 
+  const debugIssues: string[] = [];
   if (profilesResponse.error) {
-    console.error("Failed to load notification profiles", profilesResponse.error.message);
+    const message = `Profile lookup failed: ${profilesResponse.error.message}`;
+    console.error(message);
+    debugIssues.push(message);
   }
   if (postsResponse.error) {
-    console.error("Failed to load notification posts", postsResponse.error.message);
+    const message = `Post lookup failed: ${postsResponse.error.message}`;
+    console.error(message);
+    debugIssues.push(message);
   }
 
   const profileById = new Map<string, ProfileRow>();
@@ -122,46 +121,39 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
     }
   }
 
-  return rows.map((row) => {
-    const actorProfile = profileById.get(row.actor_user_id);
+  const items = rows.map((row) => {
+    const actorProfile = row.actor_profile_id ? profileById.get(row.actor_profile_id) : null;
     const post = row.post_id ? postById.get(row.post_id) : null;
 
     return {
       id: row.id,
       type: row.type,
-      recipient_user_id: row.recipient_user_id,
-      actor_user_id: row.actor_user_id,
+      recipient_profile_id: row.recipient_profile_id,
+      actor_profile_id: row.actor_profile_id ?? null,
       actor_username: actorProfile?.username ?? null,
       actor_avatar_url: actorProfile?.avatar_url ?? null,
       post_id: row.post_id ?? null,
       post_image_url: post?.image_url ?? null,
       comment_id: row.comment_id ?? null,
       created_at: row.created_at,
-      read_at: row.read_at ?? row.clicked_at ?? null,
+      read_at: row.read_at ?? null,
     };
   });
+
+  return {
+    items,
+    errorMessage: debugIssues.length > 0 ? debugIssues.join(" | ") : null,
+  };
 }
 
 export async function markNotificationAsRead(notificationId: string, recipientUserId: string) {
-  const now = new Date().toISOString();
-
-  const readResponse = await supabase
+  const response = await supabase
     .from("notifications")
-    .update({ read_at: now })
+    .update({ is_read: true })
     .eq("id", notificationId)
-    .eq("recipient_user_id", recipientUserId);
+    .eq("recipient_profile_id", recipientUserId);
 
-  if (!readResponse.error) {
-    return;
-  }
-
-  const clickedResponse = await supabase
-    .from("notifications")
-    .update({ clicked_at: now })
-    .eq("id", notificationId)
-    .eq("recipient_user_id", recipientUserId);
-
-  if (clickedResponse.error) {
-    console.error("Failed to mark notification as read", clickedResponse.error.message);
+  if (response.error) {
+    console.error("Failed to mark notification as read", response.error.message);
   }
 }

@@ -84,6 +84,7 @@ export default function AppLayout({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsDebugMessage, setNotificationsDebugMessage] = useState<string | null>(null);
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -98,8 +99,9 @@ export default function AppLayout({
     if (showLoading) {
       setNotificationsLoading(true);
     }
-    const nextNotifications = await listNotifications(viewerId);
-    setNotifications(nextNotifications);
+    const result = await listNotifications(viewerId);
+    setNotifications(result.items);
+    setNotificationsDebugMessage(result.errorMessage);
     if (showLoading) {
       setNotificationsLoading(false);
     }
@@ -188,11 +190,12 @@ export default function AppLayout({
     let active = true;
 
     const loadNotificationBadge = async () => {
-      const nextNotifications = await listNotifications(session.user.id);
+      const result = await listNotifications(session.user.id);
       if (!active) {
         return;
       }
-      setNotifications(nextNotifications);
+      setNotifications(result.items);
+      setNotificationsDebugMessage(result.errorMessage);
     };
 
     void loadNotificationBadge();
@@ -300,6 +303,7 @@ export default function AppLayout({
           <header className="notifications-panel-header">
             <h2>Notifications</h2>
           </header>
+          {notificationsDebugMessage ? <p className="notifications-error">{notificationsDebugMessage}</p> : null}
           {notificationsLoading ? <p className="notifications-empty">Loading notifications...</p> : null}
           {!notificationsLoading && notifications.length === 0 ? (
             <p className="notifications-empty">No notifications yet.</p>

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
-import { createNotification } from "@/lib/notifications";
 import { isMissingFullNameColumnError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedPost, ProfileRecord } from "@/lib/types";
@@ -212,11 +211,6 @@ export default function ProfileView({ username }: ProfileViewProps) {
     } else {
       setIsFollowing(true);
       setFollowersCount((count) => count + 1);
-      void createNotification({
-        type: "follow",
-        recipientUserId: profile.id,
-        actorUserId: viewer.id,
-      });
     }
 
     setPendingFollowAction(false);
