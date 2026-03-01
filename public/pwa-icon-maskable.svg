@@ -1,0 +1,18 @@
+﻿<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Simple Social Maskable Icon</title>
+  <desc id="desc">Maskable app icon with centered social bubble mark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="90" y1="70" x2="930" y2="955" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#085CA8"/>
+      <stop offset="1" stop-color="#17A995"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="250" y1="260" x2="770" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D8F4F0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  <path d="M248 358c0-66.274 53.726-120 120-120h288c66.274 0 120 53.726 120 120v184c0 66.274-53.726 120-120 120H510l-138 116c-31.643 26.581-79.5 4.023-79.5-37.3V642.6C264.9 626.35 248 602.26 248 575V358Z" fill="url(#inner)"/>
+  <path d="M368 442h288" stroke="#0E5FA8" stroke-width="52" stroke-linecap="round"/>
+  <path d="M368 530h212" stroke="#0E5FA8" stroke-width="52" stroke-linecap="round"/>
+</svg>

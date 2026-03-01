@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -120,7 +121,14 @@ export default function AppLayout({
   return (
     <div className="app-shell">
       <header className="top-bar">
-        <strong>Simple Social</strong>
+        <Image
+          alt="Simple Social"
+          className="brand-logo"
+          height={36}
+          priority
+          src="/logo-simple-social.svg"
+          width={224}
+        />
       </header>
 
       <main className="page-wrap">{children}</main>
