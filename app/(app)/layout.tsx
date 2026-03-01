@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { HOME_TAB_RESELECT_EVENT } from "@/lib/events";
 import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { NotificationItem } from "@/lib/types";
@@ -161,6 +162,20 @@ export default function AppLayout({
       setNotificationsOpen(false);
     }
   };
+
+  const handleTabClick = useCallback((event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href !== "/" || pathname !== "/") {
+      return;
+    }
+
+    if (window.scrollY <= 0) {
+      return;
+    }
+
+    event.preventDefault();
+    setIsTopBarHidden(false);
+    window.dispatchEvent(new Event(HOME_TAB_RESELECT_EVENT));
+  }, [pathname]);
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -405,6 +420,9 @@ export default function AppLayout({
             }
             href={tab.href}
             key={tab.href}
+            onClick={(event) => {
+              handleTabClick(event, tab.href);
+            }}
           >
             <span className="tab-icon">{tab.icon}</span>
             <span className="tab-label">{tab.label}</span>

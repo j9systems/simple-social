@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { TouchEvent } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
+import { HOME_TAB_RESELECT_EVENT } from "@/lib/events";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedComment, FeedPost } from "@/lib/types";
 
@@ -843,6 +844,25 @@ export default function HomePage() {
       window.clearTimeout(cleanupTimer);
     };
   }, [isRefreshingFeed, loading]);
+
+  useEffect(() => {
+    const onHomeTabReselect = () => {
+      if (window.scrollY <= 0) {
+        return;
+      }
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (hasSupabaseEnv) {
+        triggerFeedRefresh();
+      }
+    };
+
+    window.addEventListener(HOME_TAB_RESELECT_EVENT, onHomeTabReselect);
+
+    return () => {
+      window.removeEventListener(HOME_TAB_RESELECT_EVENT, onHomeTabReselect);
+    };
+  }, [triggerFeedRefresh]);
 
   const pullProgress = isRefreshingFeed
     ? 1
