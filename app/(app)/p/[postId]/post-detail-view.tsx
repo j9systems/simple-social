@@ -613,7 +613,7 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
     const now = Date.now();
     const previousTap = lastTapRef.current;
     const isDoubleTap =
-      Boolean(previousTap) &&
+      previousTap !== null &&
       now - previousTap.time <= DOUBLE_TAP_MAX_DELAY_MS &&
       Math.hypot(previousTap.x - touch.clientX, previousTap.y - touch.clientY) <= DOUBLE_TAP_MAX_DISTANCE_PX;
 
