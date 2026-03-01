@@ -47,12 +47,27 @@ export default function SettingsPage() {
       setUsername(typeof metadata.username === "string" ? metadata.username : "");
       setCurrentAvatarUrl(typeof metadata.avatar_url === "string" ? metadata.avatar_url : null);
 
+      const normalizeProfile = (
+        row: { id: string; username: string | null; avatar_url: string | null; full_name?: string | null } | null,
+      ): ProfileRecord | null => {
+        if (!row) {
+          return null;
+        }
+
+        return {
+          id: row.id,
+          username: row.username,
+          avatar_url: row.avatar_url,
+          full_name: row.full_name ?? null,
+        };
+      };
+
       const primaryProfileResponse = await supabase
         .from("profiles")
         .select("id,username,avatar_url,full_name")
         .eq("id", data.user.id)
         .maybeSingle();
-      let profileData = primaryProfileResponse.data;
+      let profileData = normalizeProfile(primaryProfileResponse.data);
       let profileError = primaryProfileResponse.error;
 
       if (isMissingFullNameColumnError(profileError)) {
@@ -62,7 +77,7 @@ export default function SettingsPage() {
           .select("id,username,avatar_url")
           .eq("id", data.user.id)
           .maybeSingle();
-        profileData = fallbackProfileResponse.data;
+        profileData = normalizeProfile(fallbackProfileResponse.data);
         profileError = fallbackProfileResponse.error;
       }
 
@@ -76,7 +91,7 @@ export default function SettingsPage() {
         return;
       }
 
-      const profile = profileData as ProfileRecord | null;
+      const profile = profileData;
       const profileUsername = profile?.username ?? "";
       const profileFullName = profile?.full_name?.trim() || "";
       const metadataFullName = typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
@@ -121,7 +136,7 @@ export default function SettingsPage() {
 
     const { data: takenData, error: takenError } = await supabase
       .from("profiles")
-      .select("id,username,avatar_url,full_name")
+      .select("id,username")
       .ilike("username", nextUsername)
       .neq("id", userId)
       .limit(1);
@@ -165,31 +180,35 @@ export default function SettingsPage() {
       profileUpdatePayload.full_name = nextFullName;
     }
 
-    let updateResponse = await supabase
+    const primaryUpdateResponse = await supabase
       .from("profiles")
       .update(profileUpdatePayload)
       .eq("id", userId)
       .select("id,username,avatar_url,full_name")
       .maybeSingle();
+    let updateError = primaryUpdateResponse.error;
+    let updatedProfile = primaryUpdateResponse.data as ProfileRecord | null;
 
     if (
-      updateResponse.error &&
+      primaryUpdateResponse.error &&
       supportsFullNameColumn &&
-      isMissingFullNameColumnError(updateResponse.error)
+      isMissingFullNameColumnError(primaryUpdateResponse.error)
     ) {
       setSupportsFullNameColumn(false);
-      updateResponse = await supabase
+      const fallbackUpdateResponse = await supabase
         .from("profiles")
         .update({
           username: nextUsername,
           avatar_url: avatarUrl,
         })
         .eq("id", userId)
-        .select("id,username,avatar_url,full_name")
+        .select("id,username,avatar_url")
         .maybeSingle();
+      updateError = fallbackUpdateResponse.error;
+      updatedProfile = fallbackUpdateResponse.data
+        ? { ...fallbackUpdateResponse.data, full_name: nextFullName }
+        : null;
     }
-
-    const { data: updatedProfile, error: updateError } = updateResponse;
 
     if (updateError) {
       setSaving(false);
