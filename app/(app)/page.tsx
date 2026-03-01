@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedComment, FeedPost } from "@/lib/types";
@@ -823,6 +823,7 @@ export default function HomePage() {
   const commentsLoading = openCommentsPostId ? commentsLoadingPostId === openCommentsPostId : false;
   const commentDraft = openCommentsPostId ? commentDraftByPostId[openCommentsPostId] ?? "" : "";
   const commentSubmitPending = openCommentsPostId ? Boolean(commentSubmitPendingByPostId[openCommentsPostId]) : false;
+  const pullRefreshRingStyle = { "--pull-progress": `${pullProgress}` } as CSSProperties;
 
   return (
     <section className="home-page" style={{ paddingTop: `${pullDistance}px` }}>
@@ -835,7 +836,7 @@ export default function HomePage() {
         <span
           aria-hidden="true"
           className={`pull-refresh-ring ${isRefreshingFeed ? "is-refreshing" : ""}`}
-          style={{ "--pull-progress": `${pullProgress}` } as { "--pull-progress": string }}
+          style={pullRefreshRingStyle}
         />
         <span className="visually-hidden">
           {isRefreshingFeed ? "Refreshing feed..." : "Pull down to refresh"}
