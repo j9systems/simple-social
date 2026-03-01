@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 
 type AuthMode = "login" | "signup";
+type UsernameStatus = "idle" | "checking" | "available" | "taken" | "error";
 
 function getFriendlyAuthError(message: string) {
   const lowerMessage = message.toLowerCase();
@@ -26,6 +27,9 @@ export default function LoginPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -44,6 +48,45 @@ export default function LoginPage() {
 
     check();
   }, [router]);
+
+  useEffect(() => {
+    if (!hasSupabaseEnv || mode !== "signup") {
+      return;
+    }
+
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const timeout = window.setTimeout(async () => {
+      setUsernameStatus("checking");
+
+      const { data, error: usernameError } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", trimmedUsername)
+        .limit(1);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (usernameError) {
+        setUsernameStatus("error");
+        return;
+      }
+
+      setUsernameStatus(data && data.length > 0 ? "taken" : "available");
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [mode, username]);
 
   const signIn = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -74,18 +117,63 @@ export default function LoginPage() {
     if (!hasSupabaseEnv) {
       return;
     }
+
+    const trimmedFullName = fullName.trim();
+    const trimmedUsername = username.trim();
+    if (!trimmedFullName) {
+      setError("Name is required.");
+      return;
+    }
+
+    if (!trimmedUsername) {
+      setError("Username is required.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setNotice(null);
 
+    const { data: takenData, error: takenError } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("username", trimmedUsername)
+      .limit(1);
+
+    if (takenError) {
+      setLoading(false);
+      setError(takenError.message);
+      return;
+    }
+
+    if (takenData && takenData.length > 0) {
+      setLoading(false);
+      setUsernameStatus("taken");
+      setError("That username is already taken.");
+      return;
+    }
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          full_name: trimmedFullName,
+          username: trimmedUsername,
+        },
+      },
     });
 
     if (signUpError) {
       setLoading(false);
-      setError(getFriendlyAuthError(signUpError.message));
+      const friendlyError = getFriendlyAuthError(signUpError.message);
+      if (friendlyError.toLowerCase().includes("duplicate key") && friendlyError.toLowerCase().includes("username")) {
+        setUsernameStatus("taken");
+        setError("That username is already taken.");
+        return;
+      }
+
+      setError(friendlyError);
       return;
     }
 
@@ -132,12 +220,15 @@ export default function LoginPage() {
 
         <div className="auth-tabs" role="tablist" aria-label="Authentication options">
           <button
+            aria-controls="auth-panel-login"
             aria-selected={mode === "login"}
             className={mode === "login" ? "auth-tab is-active" : "auth-tab"}
+            id="auth-tab-login"
             onClick={() => {
               setMode("login");
               setError(null);
               setNotice(null);
+              setUsernameStatus("idle");
             }}
             role="tab"
             type="button"
@@ -145,12 +236,15 @@ export default function LoginPage() {
             Log in
           </button>
           <button
+            aria-controls="auth-panel-signup"
             aria-selected={mode === "signup"}
             className={mode === "signup" ? "auth-tab is-active" : "auth-tab"}
+            id="auth-tab-signup"
             onClick={() => {
               setMode("signup");
               setError(null);
               setNotice(null);
+              setUsernameStatus(username.trim() ? "checking" : "idle");
             }}
             role="tab"
             type="button"
@@ -159,7 +253,51 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <form className="auth-form" onSubmit={mode === "login" ? signIn : signUp}>
+        <form
+          aria-labelledby={mode === "login" ? "auth-tab-login" : "auth-tab-signup"}
+          className="auth-form"
+          id={mode === "login" ? "auth-panel-login" : "auth-panel-signup"}
+          onSubmit={mode === "login" ? signIn : signUp}
+          role="tabpanel"
+        >
+          {mode === "signup" ? (
+            <>
+              <label htmlFor="full-name">Name</label>
+              <input
+                autoComplete="name"
+                id="full-name"
+                maxLength={80}
+                onChange={(event) => setFullName(event.target.value)}
+                required
+                type="text"
+                value={fullName}
+              />
+
+              <label htmlFor="username">Username</label>
+              <input
+                autoComplete="username"
+                id="username"
+                maxLength={40}
+                onChange={(event) => {
+                  const nextUsername = event.target.value;
+                  setUsername(nextUsername);
+                  setUsernameStatus(nextUsername.trim() ? "checking" : "idle");
+                }}
+                required
+                type="text"
+                value={username}
+              />
+              {username.trim() ? (
+                <p className="auth-message">
+                  {usernameStatus === "checking" ? "Checking username..." : null}
+                  {usernameStatus === "available" ? "Username is available." : null}
+                  {usernameStatus === "taken" ? "Username is already taken." : null}
+                  {usernameStatus === "error" ? "Could not check username availability." : null}
+                </p>
+              ) : null}
+            </>
+          ) : null}
+
           <label htmlFor="email">Email</label>
           <input
             autoComplete="email"
