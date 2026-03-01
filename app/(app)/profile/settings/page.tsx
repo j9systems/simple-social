@@ -9,6 +9,7 @@ import { applyTheme, readStoredTheme, THEME_STORAGE_KEY } from "@/lib/theme";
 import type { ProfileRecord } from "@/lib/types";
 
 const avatarBucket = "avatars";
+type UsernameStatus = "idle" | "checking" | "available" | "taken" | "error";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -24,6 +25,8 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [supportsFullNameColumn, setSupportsFullNameColumn] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(() => readStoredTheme() === "dark");
+  const [initialUsername, setInitialUsername] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -46,7 +49,7 @@ export default function SettingsPage() {
       const metadata = data.user.user_metadata ?? {};
       setUserId(data.user.id);
       setFullName(typeof metadata.full_name === "string" ? metadata.full_name : "");
-      setUsername(typeof metadata.username === "string" ? metadata.username : "");
+      setUsername(typeof metadata.username === "string" ? metadata.username.toLowerCase() : "");
       setCurrentAvatarUrl(typeof metadata.avatar_url === "string" ? metadata.avatar_url : null);
 
       const normalizeProfile = (
@@ -97,10 +100,12 @@ export default function SettingsPage() {
       const profileUsername = profile?.username ?? "";
       const profileFullName = profile?.full_name?.trim() || "";
       const metadataFullName = typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
-      const metadataUsername = typeof metadata.username === "string" ? metadata.username : "";
+      const metadataUsername = typeof metadata.username === "string" ? metadata.username.toLowerCase() : "";
       const metadataAvatarUrl = typeof metadata.avatar_url === "string" ? metadata.avatar_url : null;
+      const resolvedUsername = (profile?.username ?? metadataUsername).toLowerCase();
       setFullName(profileFullName || metadataFullName || profileUsername);
-      setUsername(profile?.username ?? metadataUsername);
+      setUsername(resolvedUsername);
+      setInitialUsername(resolvedUsername);
       setCurrentAvatarUrl(profile?.avatar_url ?? metadataAvatarUrl);
       setLoading(false);
     };
@@ -111,6 +116,45 @@ export default function SettingsPage() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasSupabaseEnv || loading || !userId) {
+      return;
+    }
+
+    const trimmedUsername = username.trim();
+    const trimmedInitialUsername = initialUsername.trim();
+    if (!trimmedUsername || trimmedUsername === trimmedInitialUsername) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const timeout = window.setTimeout(async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", trimmedUsername)
+        .neq("id", userId)
+        .limit(1);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (error) {
+        setUsernameStatus("error");
+        return;
+      }
+
+      setUsernameStatus(data && data.length > 0 ? "taken" : "available");
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [initialUsername, loading, userId, username]);
 
   useEffect(() => {
     return () => {
@@ -126,7 +170,7 @@ export default function SettingsPage() {
       return;
     }
 
-    const nextUsername = username.trim();
+    const nextUsername = username.trim().toLowerCase();
     const nextFullName = fullName.trim() || nextUsername;
     if (!nextUsername) {
       setMessage("Username is required.");
@@ -246,6 +290,8 @@ export default function SettingsPage() {
     }
     setAvatarPreviewUrl(null);
     setAvatarFile(null);
+    setInitialUsername(nextUsername);
+    setUsernameStatus("idle");
     setSaving(false);
     setMessage("Profile updated.");
   };
@@ -274,14 +320,34 @@ export default function SettingsPage() {
           />
 
           <label htmlFor="username">Username</label>
-          <input
-            id="username"
-            maxLength={40}
-            onChange={(event) => setUsername(event.target.value)}
-            required
-            type="text"
-            value={username}
-          />
+          <div className="handle-input-wrap">
+            <span aria-hidden="true" className="handle-input-prefix">
+              @
+            </span>
+            <input
+              autoComplete="username"
+              id="username"
+              maxLength={40}
+              onChange={(event) => {
+                const nextUsername = event.target.value.toLowerCase();
+                setUsername(nextUsername);
+                setUsernameStatus(
+                  nextUsername.trim() && nextUsername.trim() !== initialUsername.trim() ? "checking" : "idle",
+                );
+              }}
+              required
+              type="text"
+              value={username}
+            />
+          </div>
+          {username.trim() && username.trim() !== initialUsername.trim() ? (
+            <p className="auth-message">
+              {usernameStatus === "checking" ? "Checking username..." : null}
+              {usernameStatus === "available" ? "Username is available." : null}
+              {usernameStatus === "taken" ? "Username is already taken." : null}
+              {usernameStatus === "error" ? "Could not check username availability." : null}
+            </p>
+          ) : null}
 
           <label htmlFor="avatar">Profile photo</label>
           <input

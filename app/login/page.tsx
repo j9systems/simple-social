@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isMissingFullNameColumnError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 
 type AuthMode = "login" | "signup";
@@ -119,7 +120,7 @@ export default function LoginPage() {
     }
 
     const trimmedFullName = fullName.trim();
-    const trimmedUsername = username.trim();
+    const trimmedUsername = username.trim().toLowerCase();
     if (!trimmedFullName) {
       setError("Name is required.");
       return;
@@ -153,6 +154,36 @@ export default function LoginPage() {
       return;
     }
 
+    const persistProfile = async (userId: string) => {
+      const payloadWithFullName = {
+        id: userId,
+        username: trimmedUsername,
+        full_name: trimmedFullName,
+      };
+
+      const primaryUpsertResponse = await supabase.from("profiles").upsert(payloadWithFullName, { onConflict: "id" });
+
+      if (!primaryUpsertResponse.error) {
+        return;
+      }
+
+      if (!isMissingFullNameColumnError(primaryUpsertResponse.error)) {
+        throw primaryUpsertResponse.error;
+      }
+
+      const fallbackUpsertResponse = await supabase.from("profiles").upsert(
+        {
+          id: userId,
+          username: trimmedUsername,
+        },
+        { onConflict: "id" },
+      );
+
+      if (fallbackUpsertResponse.error) {
+        throw fallbackUpsertResponse.error;
+      }
+    };
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -178,6 +209,21 @@ export default function LoginPage() {
     }
 
     if (data.session) {
+      const userId = data.user?.id ?? data.session.user.id;
+      try {
+        await persistProfile(userId);
+      } catch (persistError) {
+        setLoading(false);
+        const message = persistError instanceof Error ? persistError.message : "Failed to save profile.";
+        if (message.toLowerCase().includes("duplicate key") && message.toLowerCase().includes("username")) {
+          setUsernameStatus("taken");
+          setError("That username is already taken.");
+          return;
+        }
+        setError(message);
+        return;
+      }
+
       setLoading(false);
       router.replace("/");
       return;
@@ -193,6 +239,40 @@ export default function LoginPage() {
     if (signInAfterSignUpError) {
       setError(getFriendlyAuthError(signInAfterSignUpError.message));
       return;
+    }
+
+    const signedInUserId = data.user?.id;
+    if (!signedInUserId) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        setError(userError?.message ?? "Signed in, but could not resolve user profile.");
+        return;
+      }
+      try {
+        await persistProfile(userData.user.id);
+      } catch (persistError) {
+        const message = persistError instanceof Error ? persistError.message : "Failed to save profile.";
+        if (message.toLowerCase().includes("duplicate key") && message.toLowerCase().includes("username")) {
+          setUsernameStatus("taken");
+          setError("That username is already taken.");
+          return;
+        }
+        setError(message);
+        return;
+      }
+    } else {
+      try {
+        await persistProfile(signedInUserId);
+      } catch (persistError) {
+        const message = persistError instanceof Error ? persistError.message : "Failed to save profile.";
+        if (message.toLowerCase().includes("duplicate key") && message.toLowerCase().includes("username")) {
+          setUsernameStatus("taken");
+          setError("That username is already taken.");
+          return;
+        }
+        setError(message);
+        return;
+      }
     }
 
     setNotice("Account created. You are now signed in.");
@@ -274,19 +354,24 @@ export default function LoginPage() {
               />
 
               <label htmlFor="username">Username</label>
-              <input
-                autoComplete="username"
-                id="username"
-                maxLength={40}
-                onChange={(event) => {
-                  const nextUsername = event.target.value;
-                  setUsername(nextUsername);
-                  setUsernameStatus(nextUsername.trim() ? "checking" : "idle");
-                }}
-                required
-                type="text"
-                value={username}
-              />
+              <div className="handle-input-wrap">
+                <span aria-hidden="true" className="handle-input-prefix">
+                  @
+                </span>
+                <input
+                  autoComplete="username"
+                  id="username"
+                  maxLength={40}
+                  onChange={(event) => {
+                    const nextUsername = event.target.value.toLowerCase();
+                    setUsername(nextUsername);
+                    setUsernameStatus(nextUsername.trim() ? "checking" : "idle");
+                  }}
+                  required
+                  type="text"
+                  value={username}
+                />
+              </div>
               {username.trim() ? (
                 <p className="auth-message">
                   {usernameStatus === "checking" ? "Checking username..." : null}
