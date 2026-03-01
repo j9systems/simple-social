@@ -244,7 +244,7 @@ p {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--vv-bottom, 0px);
   border-top: 1px solid var(--line);
   background: var(--tabbar-bg, #fff);
   box-shadow: 0 -4px 14px rgba(30, 29, 26, 0.08);
@@ -1277,3 +1277,4 @@ button {
     transform: rotate(360deg);
   }
 }
+
