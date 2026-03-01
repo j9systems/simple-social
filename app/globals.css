@@ -225,7 +225,7 @@ p {
   left: 0;
   right: 0;
   width: 100%;
-  bottom: 0;
+  bottom: -0.2rem;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border-top: 1px solid color-mix(in srgb, var(--line) 86%, #fff);
@@ -800,6 +800,15 @@ button {
   gap: 0.6rem;
 }
 
+.profile-stat-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-stat-link:hover {
+  text-decoration: underline;
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -874,6 +883,63 @@ button {
   margin: 0.2rem 0 0;
   padding: 0;
   display: grid;
+}
+
+.connections-page {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.connections-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.connections-back-link {
+  color: var(--accent);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.connections-back-link:hover {
+  text-decoration: underline;
+}
+
+.connections-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.connections-item {
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 85%, #fff);
+}
+
+.connections-link {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.65rem 0.2rem;
+}
+
+.connections-link.is-disabled {
+  opacity: 0.8;
+}
+
+.connections-copy {
+  min-width: 0;
+  display: grid;
+  line-height: 1.2;
+}
+
+.connections-copy span {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .search-result-link {
@@ -996,7 +1062,7 @@ button {
     right: auto;
     transform: translateX(-50%);
     width: min(480px, calc(100% - 1rem));
-    bottom: 1rem;
+    bottom: 0.8rem;
     border: 1px solid var(--line);
     border-radius: 18px;
     padding: 0.25rem;
@@ -1021,7 +1087,7 @@ button {
     left: 0;
     right: 0;
     width: 100%;
-    bottom: 0;
+    bottom: -0.2rem;
     height: calc(5.1rem + env(safe-area-inset-bottom));
     border: 0;
     border-top: 1px solid var(--line);

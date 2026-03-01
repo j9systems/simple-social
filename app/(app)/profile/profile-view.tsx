@@ -170,6 +170,16 @@ export default function ProfileView({ username }: ProfileViewProps) {
   const showSettings = isOwnProfile;
   const usernameLabel =
     profile?.username ?? (isOwnProfile && metadataUsername ? metadataUsername : viewer?.email?.split("@")[0] ?? "profile");
+  const followersHref = isOwnProfile
+    ? "/profile/followers"
+    : profile?.username
+      ? `/u/${profile.username}/followers`
+      : null;
+  const followingHref = isOwnProfile
+    ? "/profile/following"
+    : profile?.username
+      ? `/u/${profile.username}/following`
+      : null;
 
   const toggleFollow = async () => {
     if (!viewer?.id || !profile?.id || isOwnProfile || pendingFollowAction) {
@@ -263,8 +273,20 @@ export default function ProfileView({ username }: ProfileViewProps) {
             <h1>{displayName}</h1>
             <p className="profile-username">@{usernameLabel}</p>
             <p className="profile-stats">
-              <span>{followersCount} followers</span>
-              <span>{followingCount} following</span>
+              {followersHref ? (
+                <Link className="profile-stat-link" href={followersHref}>
+                  {followersCount} followers
+                </Link>
+              ) : (
+                <span>{followersCount} followers</span>
+              )}
+              {followingHref ? (
+                <Link className="profile-stat-link" href={followingHref}>
+                  {followingCount} following
+                </Link>
+              ) : (
+                <span>{followingCount} following</span>
+              )}
             </p>
           </div>
         </header>
