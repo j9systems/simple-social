@@ -63,6 +63,7 @@ p {
 }
 
 .app-shell {
+  position: relative;
   min-height: 100dvh;
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
@@ -1233,6 +1234,7 @@ button {
   }
 
   .tab-bar {
+    position: absolute;
     left: 0;
     right: 0;
     width: 100%;
