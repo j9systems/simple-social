@@ -8,6 +8,8 @@ import type { FeedComment, FeedPost } from "@/lib/types";
 
 const FEED_FIELDS =
   "id,user_id,image_url,caption,created_at,username,avatar_url,like_count,comment_count";
+const PULL_TRIGGER_DISTANCE = 92;
+const MAX_PULL_DISTANCE = 136;
 
 function formatDate(isoDate: string) {
   return new Date(isoDate).toLocaleString(undefined, {
@@ -101,7 +103,14 @@ export default function HomePage() {
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPullingFeed, setIsPullingFeed] = useState(false);
+  const [isRefreshingFeed, setIsRefreshingFeed] = useState(false);
+  const [feedRefreshTick, setFeedRefreshTick] = useState(0);
   const lastImageTapAtRef = useRef<Record<string, number>>({});
+  const pullStartYRef = useRef(0);
+  const pullActiveRef = useRef(false);
+  const pullDistanceRef = useRef(0);
 
   const toggleLike = useCallback(async (postId: string) => {
     if (!viewerId || likePendingIds[postId]) {
@@ -584,7 +593,7 @@ export default function HomePage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [feedRefreshTick]);
 
   useEffect(() => {
     const syncAvatarVersion = () => {
@@ -620,11 +629,105 @@ export default function HomePage() {
     };
   }, [closeComments, openCommentsPostId]);
 
+  useEffect(() => {
+    pullDistanceRef.current = pullDistance;
+  }, [pullDistance]);
+
+  useEffect(() => {
+    const onTouchStart = (event: TouchEvent) => {
+      if (!hasSupabaseEnv || isRefreshingFeed || openCommentsPostId) {
+        return;
+      }
+      if (window.scrollY > 0) {
+        return;
+      }
+      pullActiveRef.current = true;
+      pullStartYRef.current = event.touches[0]?.clientY ?? 0;
+      setIsPullingFeed(true);
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!pullActiveRef.current || isRefreshingFeed) {
+        return;
+      }
+      if (window.scrollY > 0) {
+        pullActiveRef.current = false;
+        setIsPullingFeed(false);
+        setPullDistance(0);
+        return;
+      }
+
+      const currentY = event.touches[0]?.clientY ?? pullStartYRef.current;
+      const rawDistance = currentY - pullStartYRef.current;
+      if (rawDistance <= 0) {
+        setPullDistance(0);
+        return;
+      }
+
+      event.preventDefault();
+      const resistedDistance = Math.min(MAX_PULL_DISTANCE, rawDistance * 0.55);
+      setPullDistance(resistedDistance);
+    };
+
+    const onTouchEnd = () => {
+      if (!pullActiveRef.current && !isPullingFeed) {
+        return;
+      }
+
+      pullActiveRef.current = false;
+      const shouldRefresh = pullDistanceRef.current >= PULL_TRIGGER_DISTANCE;
+
+      if (!shouldRefresh) {
+        setIsPullingFeed(false);
+        setPullDistance(0);
+        return;
+      }
+
+      setIsRefreshingFeed(true);
+      setPullDistance(PULL_TRIGGER_DISTANCE);
+      setFeedRefreshTick((current) => current + 1);
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd);
+    window.addEventListener("touchcancel", onTouchEnd);
+
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [isPullingFeed, isRefreshingFeed, openCommentsPostId]);
+
+  useEffect(() => {
+    if (!isRefreshingFeed) {
+      return;
+    }
+
+    if (loading) {
+      return;
+    }
+
+    const cleanupTimer = window.setTimeout(() => {
+      setIsRefreshingFeed(false);
+      setIsPullingFeed(false);
+      setPullDistance(0);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(cleanupTimer);
+    };
+  }, [isRefreshingFeed, loading]);
+
+  const pullProgress = Math.max(0, Math.min(1, pullDistance / PULL_TRIGGER_DISTANCE));
+
   const content = useMemo(() => {
     if (!hasSupabaseEnv) {
       return <p>Supabase env vars are missing.</p>;
     }
-    if (loading) {
+    if (loading && posts.length === 0) {
       return (
         <div aria-live="polite" className="feed-loading" role="status">
           <span aria-hidden="true" className="loading-spinner" />
@@ -722,7 +825,22 @@ export default function HomePage() {
   const commentSubmitPending = openCommentsPostId ? Boolean(commentSubmitPendingByPostId[openCommentsPostId]) : false;
 
   return (
-    <section className="home-page">
+    <section className="home-page" style={{ paddingTop: `${pullDistance}px` }}>
+      <div
+        aria-hidden={!(isPullingFeed || isRefreshingFeed)}
+        aria-live="polite"
+        className={`pull-refresh-indicator ${isPullingFeed || isRefreshingFeed ? "is-visible" : ""}`}
+        role="status"
+      >
+        <span
+          aria-hidden="true"
+          className={`pull-refresh-ring ${isRefreshingFeed ? "is-refreshing" : ""}`}
+          style={{ "--pull-progress": `${pullProgress}` } as { "--pull-progress": string }}
+        />
+        <span className="visually-hidden">
+          {isRefreshingFeed ? "Refreshing feed..." : "Pull down to refresh"}
+        </span>
+      </div>
       {content}
       <div
         aria-hidden={!openCommentsPostId}

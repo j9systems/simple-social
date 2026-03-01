@@ -52,9 +52,8 @@ p {
   position: sticky;
   top: 0;
   z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 0.8rem 1.25rem;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--background) 92%, white);
@@ -64,6 +63,8 @@ p {
 .brand-logo {
   width: min(180px, 56vw);
   height: auto;
+  display: block;
+  margin-inline: auto;
 }
 
 .brand-logo-home {
@@ -254,6 +255,41 @@ button {
 
 .home-page {
   margin-top: -1.25rem;
+  transition: padding-top 180ms ease;
+  will-change: padding-top;
+}
+
+.pull-refresh-indicator {
+  position: sticky;
+  top: 0.35rem;
+  z-index: 12;
+  height: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.5rem);
+  transition: opacity 140ms ease, transform 180ms ease;
+}
+
+.pull-refresh-indicator.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pull-refresh-ring {
+  --pull-progress: 0;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--line) 86%, #fff);
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--surface) 96%, #fff) 57%, transparent 58%),
+    conic-gradient(var(--accent) calc(var(--pull-progress) * 1turn), transparent 0);
+}
+
+.pull-refresh-ring.is-refreshing {
+  animation: spin 0.8s linear infinite;
 }
 
 .feed-post {
