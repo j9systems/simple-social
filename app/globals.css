@@ -423,6 +423,15 @@ button {
   margin-right: 0.3rem;
 }
 
+.comment-user-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.comment-user-link:hover {
+  text-decoration: underline;
+}
+
 .comment-like-button {
   display: inline-flex;
   align-items: center;

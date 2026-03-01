@@ -54,17 +54,29 @@ type CommentRow = {
   text?: string | null;
   body?: string | null;
   comment?: string | null;
-  profiles?: { username?: string | null } | null;
+  profiles?: { username?: string | null } | Array<{ username?: string | null }> | null;
   username?: string | null;
 };
 
-function normalizeComment(row: CommentRow, likeCount: number): FeedComment {
+function extractCommentUsername(row: CommentRow): string | null {
+  if (row.username) {
+    return row.username;
+  }
+
+  if (Array.isArray(row.profiles)) {
+    return row.profiles[0]?.username ?? null;
+  }
+
+  return row.profiles?.username ?? null;
+}
+
+function normalizeComment(row: CommentRow, likeCount: number, fallbackUsername?: string | null): FeedComment {
   return {
     id: row.id,
     post_id: row.post_id,
     user_id: row.user_id,
     created_at: row.created_at,
-    username: row.username ?? row.profiles?.username ?? null,
+    username: extractCommentUsername(row) ?? fallbackUsername ?? null,
     text: row.content ?? row.text ?? row.body ?? row.comment ?? "",
     like_count: likeCount,
   };
@@ -236,7 +248,37 @@ export default function HomePage() {
       }
     }
 
-    const normalized = commentRows.map((row) => normalizeComment(row, likesByCommentId.get(row.id) ?? 0));
+    const missingUsernameUserIds = Array.from(
+      new Set(
+        commentRows
+          .filter((row) => !extractCommentUsername(row) && Boolean(row.user_id))
+          .map((row) => row.user_id as string),
+      ),
+    );
+
+    const usernameByUserId = new Map<string, string>();
+    if (missingUsernameUserIds.length > 0) {
+      const { data: profileRows } = await supabase
+        .from("profiles")
+        .select("id,username")
+        .in("id", missingUsernameUserIds);
+
+      for (const row of profileRows ?? []) {
+        const profileId = row.id as string | undefined;
+        const profileUsername = row.username as string | null | undefined;
+        if (profileId && profileUsername) {
+          usernameByUserId.set(profileId, profileUsername);
+        }
+      }
+    }
+
+    const normalized = commentRows.map((row) =>
+      normalizeComment(
+        row,
+        likesByCommentId.get(row.id) ?? 0,
+        row.user_id ? usernameByUserId.get(row.user_id) : null,
+      ),
+    );
     setCommentsByPostId((current) => ({ ...current, [postId]: normalized }));
     setLikedCommentIds((current) => {
       const next = { ...current };
@@ -466,7 +508,9 @@ export default function HomePage() {
       if (!mounted) {
         return;
       }
-      setViewerUsername((viewerProfileData?.username as string | null) ?? null);
+      const metadata = userData.user.user_metadata ?? {};
+      const metadataUsername = typeof metadata.username === "string" ? metadata.username.trim() : "";
+      setViewerUsername((viewerProfileData?.username as string | null) ?? metadataUsername || null);
       setViewerAvatarUrl((viewerProfileData?.avatar_url as string | null) ?? null);
 
       const { data: followsData, error: followsError } = await supabase
@@ -709,7 +753,14 @@ export default function HomePage() {
               return (
                 <article className="comment-row" key={comment.id}>
                   <p className="comment-copy">
-                    <strong>{comment.username ?? "unknown"}</strong> {comment.text}
+                    {comment.username ? (
+                      <Link className="comment-user-link" href={`/u/${comment.username}`}>
+                        <strong>{comment.username}</strong>
+                      </Link>
+                    ) : (
+                      <strong>unknown</strong>
+                    )}{" "}
+                    {comment.text}
                   </p>
                   <button
                     aria-label={liked ? "Unlike comment" : "Like comment"}
