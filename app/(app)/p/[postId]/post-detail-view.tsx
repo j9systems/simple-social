@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TouchEvent } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
@@ -84,6 +85,16 @@ function CommentIcon() {
   );
 }
 
+function MoreIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="12" cy="5" r="1.9" />
+      <circle cx="12" cy="12" r="1.9" />
+      <circle cx="12" cy="19" r="1.9" />
+    </svg>
+  );
+}
+
 function extractCommentUsername(row: CommentRow): string | null {
   if (row.username) {
     return row.username;
@@ -127,6 +138,7 @@ function normalizeComment(
 }
 
 export default function PostDetailView({ postId }: PostDetailViewProps) {
+  const router = useRouter();
   const [post, setPost] = useState<FeedPost | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [viewerUsername, setViewerUsername] = useState<string | null>(null);
@@ -146,8 +158,12 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
   const [pinchScale, setPinchScale] = useState(IMAGE_ZOOM_MIN_SCALE);
+  const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
   const pinchStartDistanceRef = useRef(0);
   const isPinchingRef = useRef(false);
+  const ownerMenuRef = useRef<HTMLDivElement | null>(null);
+  const ownerMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const loadComments = useCallback(async () => {
     if (!viewerId) {
@@ -492,6 +508,35 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
     setPinchScale(IMAGE_ZOOM_MIN_SCALE);
   }, []);
 
+  const deletePost = useCallback(async () => {
+    if (!viewerId || !post || viewerId !== post.user_id || deletePending) {
+      return;
+    }
+
+    setOwnerMenuOpen(false);
+    if (!window.confirm("Delete this photo? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletePending(true);
+    setError(null);
+
+    const { error: deleteError } = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", post.id)
+      .eq("user_id", viewerId);
+
+    if (deleteError) {
+      setError(deleteError.message);
+      setDeletePending(false);
+      return;
+    }
+
+    router.push("/profile");
+    router.refresh();
+  }, [deletePending, post, router, viewerId]);
+
   useEffect(() => {
     if (!hasSupabaseEnv) {
       return;
@@ -624,6 +669,36 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
     };
   }, [closeComments, commentsOpen]);
 
+  useEffect(() => {
+    if (!ownerMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent | globalThis.TouchEvent) => {
+      const target = event.target as Node;
+      if (ownerMenuRef.current?.contains(target) || ownerMenuButtonRef.current?.contains(target)) {
+        return;
+      }
+      setOwnerMenuOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOwnerMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("touchstart", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("touchstart", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [ownerMenuOpen]);
+
   if (!hasSupabaseEnv) {
     return <p>Supabase env vars are missing.</p>;
   }
@@ -645,36 +720,72 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
     return <p>Post not found.</p>;
   }
 
+  const isOwnPost = Boolean(viewerId && viewerId === post.user_id);
+
   return (
     <section className="home-page">
       <div className="feed-list">
         <article className="feed-post">
           <header className="feed-post-header">
-            {post.username ? (
-              <Link className="feed-user-link" href={`/u/${post.username}`}>
-                <img
-                  alt={`${post.username} avatar`}
-                  className="avatar"
-                  src={buildAvatarSrc(post.avatar_url, avatarVersion)}
-                />
-                <div className="feed-post-meta">
-                  <strong>{post.username}</strong>
-                  <span>{formatDate(post.created_at)}</span>
-                </div>
-              </Link>
-            ) : (
-              <>
-                <img
-                  alt="User avatar"
-                  className="avatar"
-                  src={buildAvatarSrc(post.avatar_url, avatarVersion)}
-                />
-                <div className="feed-post-meta">
-                  <strong>Unknown user</strong>
-                  <span>{formatDate(post.created_at)}</span>
-                </div>
-              </>
-            )}
+            <div className="feed-post-header-main">
+              {post.username ? (
+                <Link className="feed-user-link" href={`/u/${post.username}`}>
+                  <img
+                    alt={`${post.username} avatar`}
+                    className="avatar"
+                    src={buildAvatarSrc(post.avatar_url, avatarVersion)}
+                  />
+                  <div className="feed-post-meta">
+                    <strong>{post.username}</strong>
+                    <span>{formatDate(post.created_at)}</span>
+                  </div>
+                </Link>
+              ) : (
+                <>
+                  <img
+                    alt="User avatar"
+                    className="avatar"
+                    src={buildAvatarSrc(post.avatar_url, avatarVersion)}
+                  />
+                  <div className="feed-post-meta">
+                    <strong>Unknown user</strong>
+                    <span>{formatDate(post.created_at)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            {isOwnPost ? (
+              <div className="post-owner-menu">
+                <button
+                  aria-expanded={ownerMenuOpen}
+                  aria-haspopup="menu"
+                  aria-label="Post options"
+                  className="post-owner-menu-button"
+                  onClick={() => {
+                    setOwnerMenuOpen((current) => !current);
+                  }}
+                  ref={ownerMenuButtonRef}
+                  type="button"
+                >
+                  <MoreIcon />
+                </button>
+                {ownerMenuOpen ? (
+                  <div className="post-owner-menu-dropdown" ref={ownerMenuRef} role="menu">
+                    <button
+                      className="post-owner-menu-item"
+                      disabled={deletePending}
+                      onClick={() => {
+                        void deletePost();
+                      }}
+                      role="menuitem"
+                      type="button"
+                    >
+                      {deletePending ? "Deleting..." : "Delete photo"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </header>
 
           <img

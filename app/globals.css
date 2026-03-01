@@ -457,8 +457,16 @@ button {
 .feed-post-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.7rem;
   padding: 0.85rem;
+}
+
+.feed-post-header-main {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
 }
 
 .feed-user-link {
@@ -476,6 +484,56 @@ button {
 .feed-post-meta span {
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+.post-owner-menu {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.post-owner-menu-button {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 94%, #fff);
+  color: var(--foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.post-owner-menu-button svg {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.post-owner-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  min-width: 9.5rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 26px rgba(20, 19, 17, 0.14);
+  overflow: hidden;
+  z-index: 20;
+}
+
+.post-owner-menu-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  color: #b61f1f;
+}
+
+.post-owner-menu-item:disabled {
+  opacity: 0.65;
 }
 
 .avatar {
@@ -864,6 +922,13 @@ button {
   aspect-ratio: 1 / 1;
   object-fit: cover;
   border-radius: 8px;
+}
+
+.profile-grid-link {
+  display: block;
+  line-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .search-page {

@@ -305,7 +305,9 @@ export default function ProfileView({ username }: ProfileViewProps) {
 
       <div className="profile-grid">
         {posts.map((post) => (
-          <img alt={post.caption ?? "Profile post"} className="profile-grid-image" key={post.id} src={post.image_url} />
+          <Link aria-label="Open post details" className="profile-grid-link" href={`/p/${post.id}`} key={post.id}>
+            <img alt={post.caption ?? "Profile post"} className="profile-grid-image" src={post.image_url} />
+          </Link>
         ))}
       </div>
     </section>
