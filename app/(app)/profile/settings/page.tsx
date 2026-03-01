@@ -180,20 +180,25 @@ export default function SettingsPage() {
       profileUpdatePayload.full_name = nextFullName;
     }
 
+    const selectFields = supportsFullNameColumn ? "id,username,avatar_url,full_name" : "id,username,avatar_url";
     const primaryUpdateResponse = await supabase
       .from("profiles")
       .update(profileUpdatePayload)
       .eq("id", userId)
-      .select("id,username,avatar_url,full_name")
+      .select(selectFields)
       .maybeSingle();
     let updateError = primaryUpdateResponse.error;
-    let updatedProfile = primaryUpdateResponse.data as ProfileRecord | null;
+    const primaryProfileRow = primaryUpdateResponse.data as
+      | { id: string; username: string | null; avatar_url: string | null; full_name?: string | null }
+      | null;
+    let updatedProfile = primaryProfileRow
+      ? {
+          ...primaryProfileRow,
+          full_name: primaryProfileRow.full_name ?? nextFullName,
+        }
+      : null;
 
-    if (
-      primaryUpdateResponse.error &&
-      supportsFullNameColumn &&
-      isMissingFullNameColumnError(primaryUpdateResponse.error)
-    ) {
+    if (primaryUpdateResponse.error && isMissingFullNameColumnError(primaryUpdateResponse.error)) {
       setSupportsFullNameColumn(false);
       const fallbackUpdateResponse = await supabase
         .from("profiles")
