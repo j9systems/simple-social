@@ -343,9 +343,9 @@ button {
   border-radius: 16px 16px 0 0;
   border: 1px solid var(--line);
   border-bottom: 0;
-  padding: 0.7rem 0.9rem 1rem;
+  padding: 0.7rem 0.9rem 0.7rem;
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto 1fr auto auto;
   gap: 0.6rem;
   transform: translateY(100%);
   opacity: 0;
@@ -400,6 +400,7 @@ button {
   align-content: start;
   overflow-y: auto;
   padding-right: 0.2rem;
+  padding-bottom: 0.25rem;
   min-height: 0;
 }
 
@@ -441,6 +442,46 @@ button {
 
 .comment-like-button.is-liked {
   color: #e0245e;
+}
+
+.comment-composer {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom) + 0.4rem);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+  background: color-mix(in srgb, var(--surface) 92%, #fff);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.35rem 0.35rem 0.4rem;
+  box-shadow: 0 8px 24px rgba(20, 19, 17, 0.08);
+}
+
+.comment-composer-avatar {
+  width: 2rem;
+  height: 2rem;
+}
+
+.comment-composer-input {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.35rem 0.15rem;
+}
+
+.comment-composer-input:focus {
+  outline: none;
+}
+
+.comment-composer-submit {
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.comment-composer-submit:disabled {
+  opacity: 0.6;
 }
 
 .upload-form,

@@ -75,12 +75,17 @@ export default function HomePage() {
   const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({});
   const [commentsByPostId, setCommentsByPostId] = useState<Record<string, FeedComment[]>>({});
   const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
+  const [commentDraftByPostId, setCommentDraftByPostId] = useState<Record<string, string>>({});
   const [commentsLoadingPostId, setCommentsLoadingPostId] = useState<string | null>(null);
   const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [commentSubmitError, setCommentSubmitError] = useState<string | null>(null);
   const [likedCommentIds, setLikedCommentIds] = useState<Record<string, boolean>>({});
   const [viewerId, setViewerId] = useState<string | null>(null);
+  const [viewerUsername, setViewerUsername] = useState<string | null>(null);
+  const [viewerAvatarUrl, setViewerAvatarUrl] = useState<string | null>(null);
   const [likePendingIds, setLikePendingIds] = useState<Record<string, boolean>>({});
   const [commentLikePendingIds, setCommentLikePendingIds] = useState<Record<string, boolean>>({});
+  const [commentSubmitPendingByPostId, setCommentSubmitPendingByPostId] = useState<Record<string, boolean>>({});
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
@@ -251,6 +256,7 @@ export default function HomePage() {
   const closeComments = useCallback(() => {
     setOpenCommentsPostId(null);
     setCommentsError(null);
+    setCommentSubmitError(null);
     setCommentsLoadingPostId(null);
   }, []);
 
@@ -332,6 +338,78 @@ export default function HomePage() {
     setPendingDone();
   }, [commentLikePendingIds, likedCommentIds, viewerId]);
 
+  const submitComment = useCallback(async () => {
+    if (!viewerId || !openCommentsPostId) {
+      return;
+    }
+
+    const nextText = (commentDraftByPostId[openCommentsPostId] ?? "").trim();
+    if (!nextText || commentSubmitPendingByPostId[openCommentsPostId]) {
+      return;
+    }
+
+    setCommentSubmitPendingByPostId((current) => ({ ...current, [openCommentsPostId]: true }));
+    setCommentSubmitError(null);
+
+    const payloadBase = {
+      post_id: openCommentsPostId,
+      user_id: viewerId,
+    };
+    const columnCandidates: Array<"content" | "text" | "body" | "comment"> = ["content", "text", "body", "comment"];
+
+    let insertedComment: CommentRow | null = null;
+    let insertErrorMessage: string | null = null;
+    for (const columnName of columnCandidates) {
+      const insertResponse = await supabase
+        .from("comments")
+        .insert({ ...payloadBase, [columnName]: nextText })
+        .select("id,post_id,user_id,created_at,content,text,body,comment")
+        .single();
+
+      if (!insertResponse.error && insertResponse.data) {
+        insertedComment = insertResponse.data as CommentRow;
+        break;
+      }
+
+      const message = insertResponse.error?.message ?? "Failed to add comment.";
+      insertErrorMessage = message;
+      if (!message.toLowerCase().includes("column")) {
+        break;
+      }
+    }
+
+    setCommentSubmitPendingByPostId((current) => {
+      const next = { ...current };
+      delete next[openCommentsPostId];
+      return next;
+    });
+
+    if (!insertedComment) {
+      setCommentSubmitError(insertErrorMessage ?? "Failed to add comment.");
+      return;
+    }
+
+    const normalizedComment = normalizeComment(
+      {
+        ...insertedComment,
+        username: viewerUsername,
+      },
+      0,
+    );
+    setCommentsByPostId((current) => ({
+      ...current,
+      [openCommentsPostId]: [...(current[openCommentsPostId] ?? []), normalizedComment],
+    }));
+    setPosts((current) =>
+      current.map((post) =>
+        post.id === openCommentsPostId
+          ? { ...post, comment_count: post.comment_count + 1 }
+          : post,
+      ),
+    );
+    setCommentDraftByPostId((current) => ({ ...current, [openCommentsPostId]: "" }));
+  }, [commentDraftByPostId, commentSubmitPendingByPostId, openCommentsPostId, viewerId, viewerUsername]);
+
   const handleImageTap = useCallback((postId: string, eventTimeStamp: number) => {
     const now = eventTimeStamp;
     const lastTapAt = lastImageTapAtRef.current[postId] ?? 0;
@@ -379,6 +457,18 @@ export default function HomePage() {
 
       const viewerId = userData.user.id;
       setViewerId(viewerId);
+
+      const { data: viewerProfileData } = await supabase
+        .from("profiles")
+        .select("username,avatar_url")
+        .eq("id", viewerId)
+        .maybeSingle();
+      if (!mounted) {
+        return;
+      }
+      setViewerUsername((viewerProfileData?.username as string | null) ?? null);
+      setViewerAvatarUrl((viewerProfileData?.avatar_url as string | null) ?? null);
+
       const { data: followsData, error: followsError } = await supabase
         .from("follows")
         .select("following_id")
@@ -579,6 +669,8 @@ export default function HomePage() {
     : null;
   const visibleComments = openCommentsPostId ? commentsByPostId[openCommentsPostId] ?? [] : [];
   const commentsLoading = openCommentsPostId ? commentsLoadingPostId === openCommentsPostId : false;
+  const commentDraft = openCommentsPostId ? commentDraftByPostId[openCommentsPostId] ?? "" : "";
+  const commentSubmitPending = openCommentsPostId ? Boolean(commentSubmitPendingByPostId[openCommentsPostId]) : false;
 
   return (
     <section className="home-page">
@@ -634,6 +726,40 @@ export default function HomePage() {
             })}
           </div>
         ) : null}
+        <form
+          className="comment-composer"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitComment();
+          }}
+        >
+          <img
+            alt="Your avatar"
+            className="avatar comment-composer-avatar"
+            src={buildAvatarSrc(viewerAvatarUrl, avatarVersion)}
+          />
+          <input
+            aria-label="Add a comment"
+            className="comment-composer-input"
+            onChange={(event) => {
+              if (!openCommentsPostId) {
+                return;
+              }
+              const nextValue = event.target.value;
+              setCommentDraftByPostId((current) => ({
+                ...current,
+                [openCommentsPostId]: nextValue,
+              }));
+            }}
+            placeholder="Add a comment..."
+            type="text"
+            value={commentDraft}
+          />
+          <button className="primary-button comment-composer-submit" disabled={commentSubmitPending || !commentDraft.trim()} type="submit">
+            {commentSubmitPending ? "Posting..." : "Post"}
+          </button>
+        </form>
+        {commentSubmitError ? <p className="comments-empty-state">{commentSubmitError}</p> : null}
       </section>
     </section>
   );
