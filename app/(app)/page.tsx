@@ -510,7 +510,7 @@ export default function HomePage() {
       }
       const metadata = userData.user.user_metadata ?? {};
       const metadataUsername = typeof metadata.username === "string" ? metadata.username.trim() : "";
-      setViewerUsername((viewerProfileData?.username as string | null) ?? metadataUsername || null);
+      setViewerUsername(((viewerProfileData?.username as string | null) ?? metadataUsername) || null);
       setViewerAvatarUrl((viewerProfileData?.avatar_url as string | null) ?? null);
 
       const { data: followsData, error: followsError } = await supabase
