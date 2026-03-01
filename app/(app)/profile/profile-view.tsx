@@ -156,11 +156,20 @@ export default function ProfileView({ username }: ProfileViewProps) {
     };
   }, []);
 
-  const displayName = profile?.full_name?.trim() || profile?.username || viewer?.email?.split("@")[0] || "Profile";
-
   const isOwnProfile = Boolean(viewer?.id && profile?.id && viewer.id === profile.id);
+  const viewerMetadata = viewer?.user_metadata ?? {};
+  const metadataFullName = typeof viewerMetadata.full_name === "string" ? viewerMetadata.full_name.trim() : "";
+  const metadataUsername = typeof viewerMetadata.username === "string" ? viewerMetadata.username.trim() : "";
+  const displayName =
+    profile?.full_name?.trim() ||
+    (isOwnProfile ? metadataFullName : "") ||
+    profile?.username ||
+    (isOwnProfile ? metadataUsername : "") ||
+    viewer?.email?.split("@")[0] ||
+    "Profile";
   const showSettings = isOwnProfile;
-  const usernameLabel = profile?.username ?? viewer?.email?.split("@")[0] ?? "profile";
+  const usernameLabel =
+    profile?.username ?? (isOwnProfile && metadataUsername ? metadataUsername : viewer?.email?.split("@")[0] ?? "profile");
 
   const toggleFollow = async () => {
     if (!viewer?.id || !profile?.id || isOwnProfile || pendingFollowAction) {

@@ -41,7 +41,12 @@ export default function SettingsPage() {
         return;
       }
 
+      const metadata = data.user.user_metadata ?? {};
       setUserId(data.user.id);
+      setFullName(typeof metadata.full_name === "string" ? metadata.full_name : "");
+      setUsername(typeof metadata.username === "string" ? metadata.username : "");
+      setCurrentAvatarUrl(typeof metadata.avatar_url === "string" ? metadata.avatar_url : null);
+
       const primaryProfileResponse = await supabase
         .from("profiles")
         .select("id,username,avatar_url,full_name")
@@ -54,7 +59,7 @@ export default function SettingsPage() {
         setSupportsFullNameColumn(false);
         const fallbackProfileResponse = await supabase
           .from("profiles")
-          .select("id,username,avatar_url,full_name")
+          .select("id,username,avatar_url")
           .eq("id", data.user.id)
           .maybeSingle();
         profileData = fallbackProfileResponse.data;
@@ -73,9 +78,13 @@ export default function SettingsPage() {
 
       const profile = profileData as ProfileRecord | null;
       const profileUsername = profile?.username ?? "";
-      setFullName(profile?.full_name?.trim() || profileUsername);
-      setUsername(profile?.username ?? "");
-      setCurrentAvatarUrl(profile?.avatar_url ?? null);
+      const profileFullName = profile?.full_name?.trim() || "";
+      const metadataFullName = typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
+      const metadataUsername = typeof metadata.username === "string" ? metadata.username : "";
+      const metadataAvatarUrl = typeof metadata.avatar_url === "string" ? metadata.avatar_url : null;
+      setFullName(profileFullName || metadataFullName || profileUsername);
+      setUsername(profile?.username ?? metadataUsername);
+      setCurrentAvatarUrl(profile?.avatar_url ?? metadataAvatarUrl);
       setLoading(false);
     };
 
