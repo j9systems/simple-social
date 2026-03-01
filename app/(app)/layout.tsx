@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
+import type { NotificationItem } from "@/lib/types";
 
 const tabs = [
   {
@@ -46,6 +48,30 @@ const tabs = [
   },
 ];
 
+function formatNotificationDate(isoDate: string) {
+  return new Date(isoDate).toLocaleString(undefined, {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+function getNotificationMessage(notification: NotificationItem) {
+  const actor = notification.actor_username ? `@${notification.actor_username}` : "Someone";
+
+  switch (notification.type) {
+    case "follow":
+      return `${actor} followed you`;
+    case "post_like":
+      return `${actor} liked your post`;
+    case "comment":
+      return `${actor} commented on your post`;
+    case "comment_like":
+      return `${actor} liked your comment`;
+    default:
+      return `${actor} interacted with your content`;
+  }
+}
+
 export default function AppLayout({
   children,
 }: Readonly<{
@@ -55,6 +81,68 @@ export default function AppLayout({
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(hasSupabaseEnv);
   const [session, setSession] = useState<Session | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const notificationsPanelRef = useRef<HTMLElement | null>(null);
+  const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
+
+  const loadNotifications = useCallback(async (showLoading = true) => {
+    const viewerId = session?.user?.id;
+    if (!viewerId) {
+      return;
+    }
+
+    if (showLoading) {
+      setNotificationsLoading(true);
+    }
+    const nextNotifications = await listNotifications(viewerId);
+    setNotifications(nextNotifications);
+    if (showLoading) {
+      setNotificationsLoading(false);
+    }
+  }, [session?.user?.id]);
+
+  const openNotifications = async () => {
+    if (!notificationsOpen) {
+      await loadNotifications();
+    }
+    setNotificationsOpen((current) => !current);
+  };
+
+  const handleNotificationClick = async (notification: NotificationItem) => {
+    const viewerId = session?.user?.id;
+    if (!viewerId) {
+      return;
+    }
+
+    if (!notification.read_at) {
+      setNotifications((current) =>
+        current.map((entry) =>
+          entry.id === notification.id
+            ? {
+                ...entry,
+                read_at: new Date().toISOString(),
+              }
+            : entry,
+        ),
+      );
+      await markNotificationAsRead(notification.id, viewerId);
+    }
+
+    if (notification.type === "follow" && notification.actor_username) {
+      router.push(`/u/${notification.actor_username}`);
+      setNotificationsOpen(false);
+      return;
+    }
+
+    if (notification.post_id) {
+      router.push(`/p/${notification.post_id}`);
+      setNotificationsOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -91,6 +179,63 @@ export default function AppLayout({
       subscription.unsubscribe();
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!session?.user?.id) {
+      return;
+    }
+
+    let active = true;
+
+    const loadNotificationBadge = async () => {
+      const nextNotifications = await listNotifications(session.user.id);
+      if (!active) {
+        return;
+      }
+      setNotifications(nextNotifications);
+    };
+
+    void loadNotificationBadge();
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!notificationsOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!notificationsPanelRef.current) {
+        return;
+      }
+
+      if (notificationsPanelRef.current.contains(event.target as Node)) {
+        return;
+      }
+      if (notificationsButtonRef.current?.contains(event.target as Node)) {
+        return;
+      }
+
+      setNotificationsOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNotificationsOpen(false);
+      }
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [notificationsOpen]);
 
   if (checkingAuth) {
     return (
@@ -129,6 +274,69 @@ export default function AppLayout({
           src="https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg"
           width={320}
         />
+        <button
+          aria-expanded={notificationsOpen}
+          aria-haspopup="dialog"
+          aria-label="Open notifications"
+          className="icon-button notifications-button"
+          onClick={() => {
+            void openNotifications();
+          }}
+          ref={notificationsButtonRef}
+          type="button"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v2.6c0 .7-.2 1.4-.7 2l-1.5 2.2a1 1 0 0 0 .8 1.5h13.8a1 1 0 0 0 .8-1.5l-1.5-2.2c-.5-.6-.7-1.3-.7-2V9A5.5 5.5 0 0 0 12 3.5Zm0 17.2a2.6 2.6 0 0 0 2.5-2h-5a2.6 2.6 0 0 0 2.5 2Z" />
+          </svg>
+          {unreadNotificationsCount > 0 ? <span className="notification-badge">{unreadNotificationsCount}</span> : null}
+        </button>
+        <section
+          aria-hidden={!notificationsOpen}
+          aria-label="Notifications"
+          className={`notifications-panel ${notificationsOpen ? "is-open" : ""}`}
+          ref={notificationsPanelRef}
+          role="dialog"
+        >
+          <header className="notifications-panel-header">
+            <h2>Notifications</h2>
+          </header>
+          {notificationsLoading ? <p className="notifications-empty">Loading notifications...</p> : null}
+          {!notificationsLoading && notifications.length === 0 ? (
+            <p className="notifications-empty">No notifications yet.</p>
+          ) : null}
+          {!notificationsLoading && notifications.length > 0 ? (
+            <div className="notifications-list">
+              {notifications.map((notification) => (
+                <button
+                  className={`notification-item ${!notification.read_at ? "is-unread" : ""}`}
+                  key={notification.id}
+                  onClick={() => {
+                    void handleNotificationClick(notification);
+                  }}
+                  type="button"
+                >
+                  {notification.type === "follow" ? (
+                    <img
+                      alt={`${notification.actor_username ?? "User"} avatar`}
+                      className="notification-avatar-thumb"
+                      src={notification.actor_avatar_url ?? "/pwa-icon.svg"}
+                    />
+                  ) : (
+                    <img
+                      alt="Related post thumbnail"
+                      className="notification-post-thumb"
+                      src={notification.post_image_url ?? "/pwa-icon.svg"}
+                    />
+                  )}
+                  <span className="notification-copy">
+                    <span>{getNotificationMessage(notification)}</span>
+                    <time dateTime={notification.created_at}>{formatNotificationDate(notification.created_at)}</time>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </section>
       </header>
 
       <main className="page-wrap">{children}</main>

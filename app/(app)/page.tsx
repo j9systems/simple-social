@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
+import { createNotification } from "@/lib/notifications";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedComment, FeedPost } from "@/lib/types";
 
@@ -210,10 +211,20 @@ export default function HomePage() {
             : post,
         ),
       );
+    } else {
+      const postOwnerId = posts.find((post) => post.id === postId)?.user_id ?? null;
+      if (postOwnerId && postOwnerId !== viewerId) {
+        void createNotification({
+          type: "post_like",
+          recipientUserId: postOwnerId,
+          actorUserId: viewerId,
+          postId,
+        });
+      }
     }
 
     setPendingDone();
-  }, [likePendingIds, likedPostIds, viewerId]);
+  }, [likePendingIds, likedPostIds, posts, viewerId]);
 
   const loadCommentsForPost = useCallback(async (postId: string) => {
     if (!viewerId) {
@@ -401,10 +412,22 @@ export default function HomePage() {
             : comment,
         ),
       }));
+    } else {
+      const commentOwnerId =
+        commentsByPostId[postId]?.find((comment) => comment.id === commentId)?.user_id ?? null;
+      if (commentOwnerId && commentOwnerId !== viewerId) {
+        void createNotification({
+          type: "comment_like",
+          recipientUserId: commentOwnerId,
+          actorUserId: viewerId,
+          postId,
+          commentId,
+        });
+      }
     }
 
     setPendingDone();
-  }, [commentLikePendingIds, likedCommentIds, viewerId]);
+  }, [commentLikePendingIds, commentsByPostId, likedCommentIds, viewerId]);
 
   const submitComment = useCallback(async () => {
     if (!viewerId || !openCommentsPostId) {
@@ -476,7 +499,18 @@ export default function HomePage() {
       ),
     );
     setCommentDraftByPostId((current) => ({ ...current, [openCommentsPostId]: "" }));
-  }, [commentDraftByPostId, commentSubmitPendingByPostId, openCommentsPostId, viewerId, viewerUsername]);
+
+    const postOwnerId = posts.find((post) => post.id === openCommentsPostId)?.user_id ?? null;
+    if (postOwnerId && postOwnerId !== viewerId) {
+      void createNotification({
+        type: "comment",
+        recipientUserId: postOwnerId,
+        actorUserId: viewerId,
+        postId: openCommentsPostId,
+        commentId: normalizedComment.id,
+      });
+    }
+  }, [commentDraftByPostId, commentSubmitPendingByPostId, openCommentsPostId, posts, viewerId, viewerUsername]);
 
   const handleImageTap = useCallback((postId: string, eventTimeStamp: number) => {
     const now = eventTimeStamp;

@@ -26,3 +26,19 @@ export type ProfileRecord = {
   avatar_url: string | null;
   full_name: string | null;
 };
+
+export type NotificationType = "follow" | "post_like" | "comment" | "comment_like";
+
+export type NotificationItem = {
+  id: string;
+  type: NotificationType;
+  recipient_user_id: string;
+  actor_user_id: string;
+  actor_username: string | null;
+  actor_avatar_url: string | null;
+  post_id: string | null;
+  post_image_url: string | null;
+  comment_id: string | null;
+  created_at: string;
+  read_at: string | null;
+};
