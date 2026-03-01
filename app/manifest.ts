@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg",
         sizes: "any",
         type: "image/svg+xml",
-        purpose: "any maskable",
+        purpose: "maskable",
       },
     ],
   };
