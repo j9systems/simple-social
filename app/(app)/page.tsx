@@ -16,7 +16,12 @@ const PULL_RESIST_FACTOR = 0.35;
 const IMAGE_ZOOM_MIN_SCALE = 1;
 const IMAGE_ZOOM_MAX_SCALE = 3;
 
-function getPinchDistance(touches: TouchList) {
+type PinchTouches = {
+  length: number;
+  [index: number]: { clientX: number; clientY: number };
+};
+
+function getPinchDistance(touches: PinchTouches) {
   if (touches.length < 2) {
     return 0;
   }
@@ -730,7 +735,7 @@ export default function HomePage() {
   }, [pullDistance]);
 
   useEffect(() => {
-    const onTouchStart = (event: TouchEvent) => {
+    const onTouchStart = (event: globalThis.TouchEvent) => {
       if (!hasSupabaseEnv || isRefreshingFeed || openCommentsPostId) {
         return;
       }
@@ -745,7 +750,7 @@ export default function HomePage() {
       setIsPullingFeed(false);
     };
 
-    const onTouchMove = (event: TouchEvent) => {
+    const onTouchMove = (event: globalThis.TouchEvent) => {
       if (!pullActiveRef.current || isRefreshingFeed) {
         return;
       }

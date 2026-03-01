@@ -12,7 +12,12 @@ const FEED_FIELDS =
 const IMAGE_ZOOM_MIN_SCALE = 1;
 const IMAGE_ZOOM_MAX_SCALE = 3;
 
-function getPinchDistance(touches: TouchList) {
+type PinchTouches = {
+  length: number;
+  [index: number]: { clientX: number; clientY: number };
+};
+
+function getPinchDistance(touches: PinchTouches) {
   if (touches.length < 2) {
     return 0;
   }
