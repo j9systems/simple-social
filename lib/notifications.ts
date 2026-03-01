@@ -32,11 +32,11 @@ type PostRow = {
   image_url: string | null;
 };
 
-const NOTIFICATION_SELECT_CANDIDATES = [
+const NOTIFICATION_SELECT_CANDIDATES: readonly string[] = [
   "id,type,recipient_user_id,actor_user_id,post_id,comment_id,created_at,read_at",
   "id,type,recipient_user_id,actor_user_id,post_id,comment_id,created_at,clicked_at",
   "id,type,recipient_user_id,actor_user_id,post_id,comment_id,created_at",
-] as const;
+];
 
 export async function createNotification({
   type,
@@ -76,7 +76,7 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
       .limit(limit);
 
     if (!response.error) {
-      rows = (response.data as NotificationRow[] | null) ?? [];
+      rows = (response.data as unknown as NotificationRow[] | null) ?? [];
       queryError = null;
       break;
     }
