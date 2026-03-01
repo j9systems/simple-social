@@ -115,7 +115,7 @@ export default function HomePage() {
   const pullDistanceRef = useRef(0);
   const refreshStartedAtRef = useRef<number | null>(null);
 
-  const triggerFeedRefresh = useCallback(() => {
+  const triggerFeedRefresh = useCallback((holdDistance: number = PULL_TRIGGER_DISTANCE) => {
     if (isRefreshingFeed) {
       return;
     }
@@ -124,8 +124,8 @@ export default function HomePage() {
     pullDistanceRef.current = 0;
     refreshStartedAtRef.current = Date.now();
     setIsRefreshingFeed(true);
-    setIsPullingFeed(false);
-    setPullDistance(0);
+    setIsPullingFeed(true);
+    setPullDistance(Math.max(PULL_TRIGGER_DISTANCE, Math.min(MAX_PULL_DISTANCE, holdDistance)));
     setFeedRefreshTick((current) => current + 1);
   }, [isRefreshingFeed]);
 
@@ -694,7 +694,7 @@ export default function HomePage() {
       );
 
       if (resistedDistance >= PULL_TRIGGER_DISTANCE) {
-        triggerFeedRefresh();
+        triggerFeedRefresh(resistedDistance);
         return;
       }
 
@@ -715,7 +715,7 @@ export default function HomePage() {
         return;
       }
 
-      triggerFeedRefresh();
+      triggerFeedRefresh(pullDistanceRef.current);
     };
 
     window.addEventListener("touchstart", onTouchStart, { passive: true });
