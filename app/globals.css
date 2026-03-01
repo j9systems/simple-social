@@ -227,6 +227,10 @@ button {
   gap: 1rem;
 }
 
+.home-page .feed-list {
+  margin-top: -1.25rem;
+}
+
 .feed-loading {
   min-height: 40vh;
   display: grid;

@@ -113,6 +113,21 @@ export default function HomePage() {
   const pullStartYRef = useRef(0);
   const pullActiveRef = useRef(false);
   const pullDistanceRef = useRef(0);
+  const refreshStartedAtRef = useRef<number | null>(null);
+
+  const triggerFeedRefresh = useCallback(() => {
+    if (isRefreshingFeed) {
+      return;
+    }
+
+    pullActiveRef.current = false;
+    pullDistanceRef.current = 0;
+    refreshStartedAtRef.current = Date.now();
+    setIsRefreshingFeed(true);
+    setIsPullingFeed(false);
+    setPullDistance(0);
+    setFeedRefreshTick((current) => current + 1);
+  }, [isRefreshingFeed]);
 
   const toggleLike = useCallback(async (postId: string) => {
     if (!viewerId || likePendingIds[postId]) {
@@ -677,6 +692,12 @@ export default function HomePage() {
           ? rawDistance
           : PULL_RESIST_START + (rawDistance - PULL_RESIST_START) * PULL_RESIST_FACTOR,
       );
+
+      if (resistedDistance >= PULL_TRIGGER_DISTANCE) {
+        triggerFeedRefresh();
+        return;
+      }
+
       setPullDistance(resistedDistance);
     };
 
@@ -694,10 +715,7 @@ export default function HomePage() {
         return;
       }
 
-      setIsRefreshingFeed(true);
-      setIsPullingFeed(false);
-      setPullDistance(0);
-      setFeedRefreshTick((current) => current + 1);
+      triggerFeedRefresh();
     };
 
     window.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -711,7 +729,7 @@ export default function HomePage() {
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [isPullingFeed, isRefreshingFeed, openCommentsPostId]);
+  }, [isPullingFeed, isRefreshingFeed, openCommentsPostId, triggerFeedRefresh]);
 
   useEffect(() => {
     if (!isRefreshingFeed) {
@@ -722,11 +740,14 @@ export default function HomePage() {
       return;
     }
 
+    const elapsedMs = refreshStartedAtRef.current ? Date.now() - refreshStartedAtRef.current : 0;
+    const remainingAnimationMs = Math.max(0, 420 - elapsedMs);
     const cleanupTimer = window.setTimeout(() => {
       setIsRefreshingFeed(false);
       setIsPullingFeed(false);
       setPullDistance(0);
-    }, 0);
+      refreshStartedAtRef.current = null;
+    }, remainingAnimationMs);
 
     return () => {
       window.clearTimeout(cleanupTimer);
