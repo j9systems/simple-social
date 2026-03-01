@@ -33,7 +33,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var theme=localStorage.getItem('simple-social-theme');document.documentElement.dataset.theme=theme==='dark'?'dark':'light';}catch(_){document.documentElement.dataset.theme='light';}})();",
+          }}
+        />
+      </head>
       <body className="antialiased">{children}</body>
     </html>
   );

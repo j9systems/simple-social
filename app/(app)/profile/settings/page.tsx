@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AVATAR_UPDATED_EVENT, AVATAR_VERSION_KEY, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { isMissingFullNameColumnError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
+import { applyTheme, readStoredTheme, THEME_STORAGE_KEY } from "@/lib/theme";
 import type { ProfileRecord } from "@/lib/types";
 
 const avatarBucket = "avatars";
@@ -22,6 +23,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [supportsFullNameColumn, setSupportsFullNameColumn] = useState(true);
+  const [darkModeEnabled, setDarkModeEnabled] = useState(() => readStoredTheme() === "dark");
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -301,6 +303,28 @@ export default function SettingsPage() {
           {displayedAvatarUrl ? (
             <img alt="Current avatar" className="avatar settings-avatar" src={displayedAvatarUrl} />
           ) : null}
+
+          <div className="settings-theme-row">
+            <div>
+              <p className="settings-theme-title">Dark mode</p>
+              <p className="settings-theme-hint">Use a darker color theme across the app.</p>
+            </div>
+            <label className="theme-toggle" htmlFor="dark-mode-toggle">
+              <input
+                checked={darkModeEnabled}
+                id="dark-mode-toggle"
+                onChange={(event) => {
+                  const nextTheme = event.target.checked ? "dark" : "light";
+                  setDarkModeEnabled(event.target.checked);
+                  applyTheme(nextTheme);
+                  window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+                }}
+                type="checkbox"
+              />
+              <span aria-hidden="true" className="theme-toggle-track" />
+              <span className="visually-hidden">Enable dark mode</span>
+            </label>
+          </div>
 
           <button className="primary-button" disabled={saving} type="submit">
             {saving ? "Saving..." : "Save changes"}

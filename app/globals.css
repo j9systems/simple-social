@@ -9,6 +9,15 @@
   --accent: #0d77d9;
 }
 
+:root[data-theme="dark"] {
+  --background: #131415;
+  --surface: #1b1d1f;
+  --foreground: #f2f3f4;
+  --muted: #b0b6bc;
+  --line: #32363a;
+  --accent: #4da0ff;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -316,7 +325,8 @@ input {
   border-radius: 10px;
   padding: 0.65rem 0.75rem;
   font: inherit;
-  background: #fff;
+  background: var(--surface);
+  color: var(--foreground);
   width: 100%;
   max-width: 100%;
 }
@@ -340,7 +350,7 @@ button {
 
 .secondary-button {
   border-color: var(--line);
-  background: #fff;
+  background: var(--surface);
   color: var(--foreground);
 }
 
@@ -859,6 +869,81 @@ button {
 .settings-form .primary-button,
 .settings-form .secondary-button {
   width: 100%;
+}
+
+.settings-theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 0.2rem 0;
+}
+
+.settings-theme-title {
+  color: var(--foreground);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.settings-theme-hint {
+  font-size: 0.84rem;
+}
+
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.theme-toggle-track {
+  width: 2.7rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--line) 90%, var(--surface));
+  background: color-mix(in srgb, var(--line) 50%, var(--surface));
+  position: relative;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.theme-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 0.1rem;
+  left: 0.1rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--line) 85%, var(--surface));
+  transition: transform 160ms ease;
+}
+
+.theme-toggle input:checked + .theme-toggle-track {
+  background: color-mix(in srgb, var(--accent) 44%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+}
+
+.theme-toggle input:checked + .theme-toggle-track::after {
+  transform: translateX(1.12rem);
+}
+
+:root[data-theme="dark"] .top-bar,
+:root[data-theme="dark"] .tab-bar,
+:root[data-theme="dark"] .comment-composer,
+:root[data-theme="dark"] .search-input-wrap input,
+:root[data-theme="dark"] .icon-button:hover {
+  background: var(--surface);
 }
 
 @media (min-width: 769px) {
