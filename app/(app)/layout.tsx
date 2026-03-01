@@ -449,7 +449,7 @@ export default function AppLayout({
         </header>
       ) : null}
 
-      <main className="page-wrap">{children}</main>
+      <main className={isProfilePage ? "page-wrap page-wrap-no-top-bar" : "page-wrap"}>{children}</main>
 
       <nav aria-label="Primary" className="tab-bar">
         {tabs.map((tab) => (

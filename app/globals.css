@@ -58,6 +58,10 @@ p {
   padding: 1.25rem 1.25rem calc(6.25rem + env(safe-area-inset-bottom));
 }
 
+.page-wrap-no-top-bar {
+  padding-top: calc(1.25rem + env(safe-area-inset-top));
+}
+
 .app-shell {
   min-height: 100dvh;
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
@@ -229,7 +233,7 @@ p {
   left: 0;
   right: 0;
   width: 100%;
-  bottom: -0.2rem;
+  bottom: 0;
   display: grid;
   justify-items: stretch;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1232,7 +1236,7 @@ button {
     left: 0;
     right: 0;
     width: 100%;
-    bottom: -0.2rem;
+    bottom: 0;
     height: calc(4.25rem + env(safe-area-inset-bottom));
     border: 0;
     border-top: 1px solid var(--line);
