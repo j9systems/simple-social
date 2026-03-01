@@ -5,12 +5,30 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 
+type AuthMode = "login" | "signup";
+
+function getFriendlyAuthError(message: string) {
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes("already registered") || lowerMessage.includes("already been registered")) {
+    return "That email is already in use. Try logging in instead.";
+  }
+
+  if (lowerMessage.includes("email not confirmed")) {
+    return "Email confirmation is still enabled in Supabase. Disable it to allow instant sign-up.";
+  }
+
+  return message;
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -34,6 +52,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError(null);
+    setNotice(null);
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
@@ -43,33 +62,53 @@ export default function LoginPage() {
     setLoading(false);
 
     if (signInError) {
-      setError(signInError.message);
+      setError(getFriendlyAuthError(signInError.message));
       return;
     }
 
     router.replace("/");
   };
 
-  const signUp = async () => {
+  const signUp = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!hasSupabaseEnv) {
       return;
     }
     setLoading(true);
     setError(null);
+    setNotice(null);
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (signUpError) {
+      setLoading(false);
+      setError(getFriendlyAuthError(signUpError.message));
+      return;
+    }
+
+    if (data.session) {
+      setLoading(false);
+      router.replace("/");
+      return;
+    }
+
+    const { error: signInAfterSignUpError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     setLoading(false);
 
-    if (signUpError) {
-      setError(signUpError.message);
+    if (signInAfterSignUpError) {
+      setError(getFriendlyAuthError(signInAfterSignUpError.message));
       return;
     }
 
-    setError("Account created. If email confirmation is enabled, verify your inbox before signing in.");
+    setNotice("Account created. You are now signed in.");
+    router.replace("/");
   };
 
   return (
@@ -83,15 +122,44 @@ export default function LoginPage() {
           src="https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg"
           width={320}
         />
-        <h1>Login</h1>
-        <p>Sign in to access Simple Social.</p>
+        <h1>Welcome</h1>
+        <p>Log in or create an account to access Simple Social.</p>
         {!hasSupabaseEnv ? (
           <p className="auth-message">
             Missing Supabase env vars. Add values in <code>.env.local</code> first.
           </p>
         ) : null}
 
-        <form className="auth-form" onSubmit={signIn}>
+        <div className="auth-tabs" role="tablist" aria-label="Authentication options">
+          <button
+            aria-selected={mode === "login"}
+            className={mode === "login" ? "auth-tab is-active" : "auth-tab"}
+            onClick={() => {
+              setMode("login");
+              setError(null);
+              setNotice(null);
+            }}
+            role="tab"
+            type="button"
+          >
+            Log in
+          </button>
+          <button
+            aria-selected={mode === "signup"}
+            className={mode === "signup" ? "auth-tab is-active" : "auth-tab"}
+            onClick={() => {
+              setMode("signup");
+              setError(null);
+              setNotice(null);
+            }}
+            role="tab"
+            type="button"
+          >
+            Sign up
+          </button>
+        </div>
+
+        <form className="auth-form" onSubmit={mode === "login" ? signIn : signUp}>
           <label htmlFor="email">Email</label>
           <input
             autoComplete="email"
@@ -104,7 +172,7 @@ export default function LoginPage() {
 
           <label htmlFor="password">Password</label>
           <input
-            autoComplete="current-password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
             id="password"
             minLength={6}
             onChange={(event) => setPassword(event.target.value)}
@@ -114,20 +182,11 @@ export default function LoginPage() {
           />
 
           <button className="primary-button" disabled={loading || !hasSupabaseEnv} type="submit">
-            {loading ? "Working..." : "Sign in"}
+            {loading ? "Working..." : mode === "login" ? "Log in" : "Create account"}
           </button>
         </form>
-
-        <button
-          className="secondary-button"
-          disabled={loading || !hasSupabaseEnv}
-          onClick={signUp}
-          type="button"
-        >
-          Create account
-        </button>
-
         {error ? <p className="auth-message">{error}</p> : null}
+        {notice ? <p className="auth-message">{notice}</p> : null}
       </section>
     </main>
   );

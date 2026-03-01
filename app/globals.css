@@ -339,6 +339,27 @@ p {
   gap: 0.6rem;
 }
 
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.auth-tab {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.auth-tab.is-active {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+
 label {
   font-size: 0.9rem;
   font-weight: 600;
