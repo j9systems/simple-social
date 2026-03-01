@@ -1,18 +1,22 @@
-﻿<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">Simple Social Maskable Icon</title>
-  <desc id="desc">Maskable app icon with centered social bubble mark.</desc>
+  <desc id="desc">Maskable icon with centered chat bubble mark and lines.</desc>
   <defs>
-    <linearGradient id="bg" x1="90" y1="70" x2="930" y2="955" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#085CA8"/>
-      <stop offset="1" stop-color="#17A995"/>
+    <linearGradient id="mask-bg" x1="80" y1="72" x2="944" y2="964" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0759A7"/>
+      <stop offset="1" stop-color="#0FA0AF"/>
     </linearGradient>
-    <linearGradient id="inner" x1="250" y1="260" x2="770" y2="760" gradientUnits="userSpaceOnUse">
+    <linearGradient id="mask-bubble" x1="252" y1="272" x2="772" y2="768" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#D8F4F0"/>
+      <stop offset="1" stop-color="#D8F6FA"/>
     </linearGradient>
   </defs>
-  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
-  <path d="M248 358c0-66.274 53.726-120 120-120h288c66.274 0 120 53.726 120 120v184c0 66.274-53.726 120-120 120H510l-138 116c-31.643 26.581-79.5 4.023-79.5-37.3V642.6C264.9 626.35 248 602.26 248 575V358Z" fill="url(#inner)"/>
-  <path d="M368 442h288" stroke="#0E5FA8" stroke-width="52" stroke-linecap="round"/>
-  <path d="M368 530h212" stroke="#0E5FA8" stroke-width="52" stroke-linecap="round"/>
+
+  <rect width="1024" height="1024" rx="220" fill="url(#mask-bg)"/>
+  <path d="M248 362c0-70.69 57.31-128 128-128h272c70.69 0 128 57.31 128 128v190c0 70.69-57.31 128-128 128H508l-136 114c-33.2 27.87-82.5 4.08-82.5-39.27V651.8C262.4 636.8 248 613.8 248 586V362Z" fill="url(#mask-bubble)"/>
+  <circle cx="398" cy="452" r="24" fill="#0FA0AF"/>
+  <circle cx="512" cy="452" r="24" fill="#0FA0AF"/>
+  <circle cx="626" cy="452" r="24" fill="#0FA0AF"/>
+  <path d="M372 580h280" stroke="#0A65BA" stroke-width="48" stroke-linecap="round"/>
+  <path d="M372 662h204" stroke="#0A65BA" stroke-width="48" stroke-linecap="round"/>
 </svg>

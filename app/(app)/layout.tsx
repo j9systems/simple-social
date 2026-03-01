@@ -123,7 +123,7 @@ export default function AppLayout({
       <header className="top-bar">
         <Image
           alt="Simple Social"
-          className="brand-logo"
+          className={pathname === "/" ? "brand-logo brand-logo-home" : "brand-logo"}
           height={36}
           priority
           src="/logo-simple-social.svg"

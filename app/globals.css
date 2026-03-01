@@ -66,6 +66,10 @@ p {
   height: auto;
 }
 
+.brand-logo-home {
+  width: min(132px, 46vw);
+}
+
 .tab-bar {
   position: fixed;
   left: 0;

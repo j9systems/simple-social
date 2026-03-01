@@ -1,23 +1,25 @@
-﻿<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">Simple Social App Icon</title>
-  <desc id="desc">Rounded square icon with layered speech bubbles and SS monogram.</desc>
+  <desc id="desc">Rounded square app icon with chat bubble and spark motif.</desc>
   <defs>
-    <linearGradient id="bgGrad" x1="120" y1="80" x2="920" y2="960" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0D77D9"/>
-      <stop offset="1" stop-color="#20B8A3"/>
+    <linearGradient id="icon-bg" x1="70" y1="64" x2="958" y2="980" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#095FB1"/>
+      <stop offset="1" stop-color="#11A7B7"/>
     </linearGradient>
-    <linearGradient id="bubbleGrad" x1="260" y1="250" x2="780" y2="780" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bubble-fill" x1="224" y1="246" x2="792" y2="816" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#DDF4FF"/>
+      <stop offset="1" stop-color="#D9F7FB"/>
     </linearGradient>
   </defs>
 
-  <rect x="64" y="64" width="896" height="896" rx="248" fill="url(#bgGrad)"/>
-  <rect x="112" y="112" width="800" height="800" rx="214" fill="#000" fill-opacity="0.08"/>
+  <rect x="64" y="64" width="896" height="896" rx="230" fill="url(#icon-bg)"/>
+  <rect x="110" y="110" width="804" height="804" rx="205" fill="#000000" fill-opacity="0.08"/>
 
-  <path d="M258 356c0-60.751 49.249-110 110-110h251c60.751 0 110 49.249 110 110v170c0 60.751-49.249 110-110 110H492l-124 104c-28.65 24.047-72 3.639-72-33.755V618.5C273.19 603.797 258 581.767 258 556V356Z" fill="url(#bubbleGrad)"/>
-  <path d="M390.3 545.6c-26.2 0-47.8-6.7-64.8-20l18.3-36.6c15.4 11.3 33 17 52.6 17 10.2 0 18.3-1.9 24.3-5.8 6.1-3.9 9.2-9.5 9.2-16.8 0-5.6-2.1-10.1-6.2-13.5-4.1-3.3-11.9-6.5-23.7-9.4l-16.6-4.4c-18.2-4.8-32-11.8-41.2-21.1-9.1-9.3-13.6-22-13.6-37.8 0-13.3 3.5-24.9 10.5-34.7 7.1-9.9 17-17.5 29.8-22.7 12.7-5.4 27.1-8 43.4-8 22 0 41.8 5.4 59.1 16l-16.8 35.6c-13.2-8.4-27.3-12.5-42.2-12.5-9.4 0-16.8 1.9-22.3 5.6-5.4 3.8-8.1 9-8.1 15.7 0 5.4 1.8 9.6 5.6 12.6 3.9 2.9 11.4 5.8 22.4 8.6l16.5 4.2c19.7 5.3 34.3 12.7 43.8 22.1 9.5 9.6 14.2 22.7 14.2 39.3 0 21.2-8 37.5-23.8 49.1-15.9 11.5-37.3 17.2-64 17.2Z" fill="#0E5FA8"/>
-  <circle cx="444" cy="397" r="22" fill="#20B8A3"/>
-  <circle cx="520" cy="397" r="22" fill="#20B8A3"/>
-  <circle cx="596" cy="397" r="22" fill="#20B8A3"/>
+  <path d="M220 372c0-75.11 60.89-136 136-136h312c75.11 0 136 60.89 136 136v200c0 75.11-60.89 136-136 136H514l-152 128c-36.43 30.63-91.5 4.67-91.5-43.12v-108.8C239.35 664.5 220 636.65 220 605V372Z" fill="url(#bubble-fill)"/>
+  <circle cx="394" cy="466" r="28" fill="#11A7B7"/>
+  <circle cx="512" cy="466" r="28" fill="#11A7B7"/>
+  <circle cx="630" cy="466" r="28" fill="#11A7B7"/>
+  <path d="M664 260l44.2 72.4 82.8 16.2-59.8 60.8 10.4 85.8-77.6-38.2-77.6 38.2 10.4-85.8-59.8-60.8 82.8-16.2L664 260Z" fill="#93E8F1"/>
+  <path d="M352 600h320" stroke="#0C6CC5" stroke-width="52" stroke-linecap="round"/>
+  <path d="M352 692h236" stroke="#0C6CC5" stroke-width="52" stroke-linecap="round"/>
 </svg>
