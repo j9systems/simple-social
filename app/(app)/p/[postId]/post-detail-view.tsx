@@ -933,7 +933,12 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
           </button>
         </header>
         <p className="comments-post-caption">{post.caption ?? "Post comments"}</p>
-        {commentsLoading ? <p className="comments-empty-state">Loading comments...</p> : null}
+        {commentsLoading ? (
+          <div aria-live="polite" className="comments-loading" role="status">
+            <span aria-hidden="true" className="loading-spinner" />
+            <span className="visually-hidden">Loading comments...</span>
+          </div>
+        ) : null}
         {!commentsLoading && commentsError ? <p className="comments-empty-state">{commentsError}</p> : null}
         {!commentsLoading && !commentsError && comments.length === 0 ? (
           <p className="comments-empty-state">No comments yet.</p>

@@ -12,9 +12,17 @@ type SearchProfile = ProfileRecord & {
   full_name?: string | null;
 };
 
-function buildName(profile: SearchProfile) {
+function buildDisplayName(profile: SearchProfile) {
   const fullName = profile.full_name?.trim();
-  return fullName || null;
+  if (fullName) {
+    return fullName;
+  }
+
+  if (profile.username) {
+    return profile.username;
+  }
+
+  return "User";
 }
 
 export default function SearchPage() {
@@ -159,19 +167,18 @@ export default function SearchPage() {
               return null;
             }
 
-            const name = buildName(profile);
-            const title = name ?? `@${profile.username}`;
+            const displayName = buildDisplayName(profile);
             return (
               <li key={profile.id}>
                 <Link className="search-result-link" href={`/u/${profile.username}`}>
                   <img
-                    alt={`${name ?? profile.username} avatar`}
+                    alt={`${displayName} avatar`}
                     className="avatar"
                     src={buildAvatarSrc(profile.avatar_url, avatarVersion)}
                   />
                   <span className="search-result-copy">
-                    <strong>{title}</strong>
-                    {name ? <span>@{profile.username}</span> : null}
+                    <strong>{displayName}</strong>
+                    <span>@{profile.username}</span>
                   </span>
                 </Link>
               </li>

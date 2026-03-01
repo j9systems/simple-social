@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { HOME_TAB_RESELECT_EVENT } from "@/lib/events";
 import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
@@ -43,11 +44,6 @@ const tabs = [
   {
     href: "/profile",
     label: "Profile",
-    icon: (
-      <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0 10c4.4 0 8 2 8 4.5V21H4v-2.5C4 16 7.6 14 12 14Z" />
-      </svg>
-    ),
   },
 ];
 
@@ -92,6 +88,8 @@ export default function AppLayout({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsDebugMessage, setNotificationsDebugMessage] = useState<string | null>(null);
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
+  const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
   const lastScrollYRef = useRef(0);
@@ -239,6 +237,43 @@ export default function AppLayout({
       active = false;
     };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) {
+      return;
+    }
+
+    let active = true;
+
+    const loadViewerAvatar = async () => {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (!active) {
+        return;
+      }
+
+      const metadata = session.user.user_metadata ?? {};
+      const metadataAvatarUrl = typeof metadata.avatar_url === "string" ? metadata.avatar_url : null;
+      setViewerTabAvatarUrl((profileData?.avatar_url as string | null) ?? metadataAvatarUrl);
+    };
+
+    const syncAvatarVersion = () => {
+      setAvatarVersion(readAvatarVersion());
+      void loadViewerAvatar();
+    };
+
+    syncAvatarVersion();
+    window.addEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
+
+    return () => {
+      active = false;
+      window.removeEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
+    };
+  }, [session?.user?.id, session?.user?.user_metadata]);
 
   useEffect(() => {
     if (!notificationsOpen) {
@@ -430,7 +465,17 @@ export default function AppLayout({
               handleTabClick(event, tab.href);
             }}
           >
-            <span className="tab-icon">{tab.icon}</span>
+            <span className="tab-icon">
+              {tab.href === "/profile" ? (
+                <img
+                  alt="Your profile"
+                  className="tab-profile-avatar"
+                  src={buildAvatarSrc(viewerTabAvatarUrl, avatarVersion)}
+                />
+              ) : (
+                tab.icon
+              )}
+            </span>
             <span className="tab-label">{tab.label}</span>
           </Link>
         ))}

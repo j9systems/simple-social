@@ -1123,7 +1123,12 @@ export default function HomePage() {
         {openCommentsPost ? (
           <p className="comments-post-caption">{openCommentsPost.caption ?? "Post comments"}</p>
         ) : null}
-        {commentsLoading ? <p className="comments-empty-state">Loading comments...</p> : null}
+        {commentsLoading ? (
+          <div aria-live="polite" className="comments-loading" role="status">
+            <span aria-hidden="true" className="loading-spinner" />
+            <span className="visually-hidden">Loading comments...</span>
+          </div>
+        ) : null}
         {!commentsLoading && commentsError ? <p className="comments-empty-state">{commentsError}</p> : null}
         {!commentsLoading && !commentsError && visibleComments.length === 0 ? (
           <p className="comments-empty-state">No comments yet.</p>
