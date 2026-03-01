@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-const PWA_ICON_URL = "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301b";
+const PWA_ICON_URL = "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301c";
 
 export const metadata: Metadata = {
   title: "Simple Social",
   description: "Simple social app with Supabase auth",
-  manifest: "/manifest.webmanifest?v=20260301b",
+  manifest: "/manifest.webmanifest?v=20260301c",
   icons: {
     icon: [
       {

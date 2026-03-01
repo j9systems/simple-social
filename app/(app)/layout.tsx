@@ -10,6 +10,8 @@ import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { NotificationItem } from "@/lib/types";
 
+const PWA_ICON_URL = "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301c";
+
 const tabs = [
   {
     href: "/",
@@ -388,13 +390,13 @@ export default function AppLayout({
                     <img
                       alt={`${notification.actor_username ?? "User"} avatar`}
                       className="notification-avatar-thumb"
-                      src={notification.actor_avatar_url ?? "/pwa-icon.svg"}
+                      src={notification.actor_avatar_url ?? PWA_ICON_URL}
                     />
                   ) : (
                     <img
                       alt="Related post thumbnail"
                       className="notification-post-thumb"
-                      src={notification.post_image_url ?? "/pwa-icon.svg"}
+                      src={notification.post_image_url ?? PWA_ICON_URL}
                     />
                   )}
                   <span className="notification-copy">

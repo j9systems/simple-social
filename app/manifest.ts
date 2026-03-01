@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const PWA_ICON_URL = "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301b";
+const PWA_ICON_URL = "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301c";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -16,7 +16,7 @@ export default function manifest(): MetadataRoute.Manifest {
         src: PWA_ICON_URL,
         sizes: "any",
         type: "image/svg+xml",
-        purpose: "maskable",
+        purpose: "any",
       },
     ],
   };
