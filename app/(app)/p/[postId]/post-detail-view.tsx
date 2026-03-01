@@ -13,10 +13,18 @@ const FEED_FIELDS =
 const IMAGE_ZOOM_MIN_SCALE = 1;
 const IMAGE_ZOOM_MAX_SCALE = 3;
 const COMMENT_LONG_PRESS_MS = 550;
+const DOUBLE_TAP_MAX_DELAY_MS = 300;
+const DOUBLE_TAP_MAX_DISTANCE_PX = 24;
 
 type PinchTouches = {
   length: number;
   [index: number]: { clientX: number; clientY: number };
+};
+
+type TapSnapshot = {
+  time: number;
+  x: number;
+  y: number;
 };
 
 function getPinchDistance(touches: PinchTouches) {
@@ -168,6 +176,7 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
   const ownerMenuRef = useRef<HTMLDivElement | null>(null);
   const ownerMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const commentLongPressTimeoutRef = useRef<number | null>(null);
+  const lastTapRef = useRef<TapSnapshot | null>(null);
 
   const loadComments = useCallback(async () => {
     if (!viewerId) {
@@ -583,6 +592,45 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
     setPinchScale(IMAGE_ZOOM_MIN_SCALE);
   }, []);
 
+  const triggerDoubleTapLike = useCallback(() => {
+    if (!viewerId || !post || likePending || liked) {
+      return;
+    }
+
+    void toggleLike();
+  }, [likePending, liked, post, toggleLike, viewerId]);
+
+  const handleImageTapEnd = useCallback((event: TouchEvent<HTMLImageElement>) => {
+    if (isPinchingRef.current || event.touches.length > 0) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    if (!touch) {
+      return;
+    }
+
+    const now = Date.now();
+    const previousTap = lastTapRef.current;
+    const isDoubleTap =
+      Boolean(previousTap) &&
+      now - previousTap.time <= DOUBLE_TAP_MAX_DELAY_MS &&
+      Math.hypot(previousTap.x - touch.clientX, previousTap.y - touch.clientY) <= DOUBLE_TAP_MAX_DISTANCE_PX;
+
+    lastTapRef.current = {
+      time: now,
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+
+    if (!isDoubleTap) {
+      return;
+    }
+
+    lastTapRef.current = null;
+    triggerDoubleTapLike();
+  }, [triggerDoubleTapLike]);
+
   const deletePost = useCallback(async () => {
     if (!viewerId || !post || viewerId !== post.user_id || deletePending) {
       return;
@@ -872,8 +920,12 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
           <img
             alt={post.caption ?? "Post image"}
             className="feed-image"
+            onDoubleClick={triggerDoubleTapLike}
             onTouchCancel={handleImagePinchEnd}
-            onTouchEnd={handleImagePinchEnd}
+            onTouchEnd={(event) => {
+              handleImageTapEnd(event);
+              handleImagePinchEnd(event);
+            }}
             onTouchMove={handleImagePinchMove}
             onTouchStart={handleImagePinchStart}
             src={post.image_url}

@@ -10,12 +10,18 @@ const SEARCH_LIMIT = 30;
 
 type SearchProfile = ProfileRecord & {
   full_name?: string | null;
+  name?: string | null;
 };
 
 function buildDisplayName(profile: SearchProfile) {
   const fullName = profile.full_name?.trim();
   if (fullName) {
     return fullName;
+  }
+
+  const name = profile.name?.trim();
+  if (name) {
+    return name;
   }
 
   if (profile.username) {
@@ -61,6 +67,8 @@ export default function SearchPage() {
       setError(null);
 
       const wildcard = `%${trimmed}%`;
+      const isMissingColumnError = (message: string, columnName: string) =>
+        message.includes(columnName) && (message.includes("column") || message.includes("schema cache"));
 
       const primaryResponse = await supabase
         .from("profiles")
@@ -79,14 +87,36 @@ export default function SearchPage() {
         return;
       }
 
-      const canFallbackToUsernameOnly =
-        primaryResponse.error.message.includes("full_name") ||
-        primaryResponse.error.message.includes("column");
-
-      if (!canFallbackToUsernameOnly) {
+      const primaryErrorMessage = primaryResponse.error.message;
+      if (!isMissingColumnError(primaryErrorMessage.toLowerCase(), "full_name")) {
         setProfiles([]);
         setLoading(false);
-        setError(primaryResponse.error.message);
+        setError(primaryErrorMessage);
+        return;
+      }
+
+      const nameResponse = await supabase
+        .from("profiles")
+        .select("id,username,avatar_url,name")
+        .or(`username.ilike.${wildcard},name.ilike.${wildcard}`)
+        .order("username", { ascending: true })
+        .limit(SEARCH_LIMIT);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!nameResponse.error) {
+        setProfiles(((nameResponse.data as SearchProfile[]) ?? []).filter((profile) => Boolean(profile.username)));
+        setLoading(false);
+        return;
+      }
+
+      const nameErrorMessage = nameResponse.error.message;
+      if (!isMissingColumnError(nameErrorMessage.toLowerCase(), "name")) {
+        setProfiles([]);
+        setLoading(false);
+        setError(nameErrorMessage);
         return;
       }
 
@@ -107,7 +137,6 @@ export default function SearchPage() {
       } else {
         setProfiles(((usernameOnlyResponse.data as SearchProfile[]) ?? []).filter((profile) => Boolean(profile.username)));
       }
-
       setLoading(false);
     }, 220);
 
@@ -168,6 +197,7 @@ export default function SearchPage() {
             }
 
             const displayName = buildDisplayName(profile);
+            const showUsername = displayName.toLowerCase() !== profile.username.toLowerCase();
             return (
               <li key={profile.id}>
                 <Link className="search-result-link" href={`/u/${profile.username}`}>
@@ -178,7 +208,7 @@ export default function SearchPage() {
                   />
                   <span className="search-result-copy">
                     <strong>{displayName}</strong>
-                    <span>@{profile.username}</span>
+                    {showUsername ? <span>@{profile.username}</span> : null}
                   </span>
                 </Link>
               </li>

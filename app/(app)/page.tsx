@@ -17,10 +17,18 @@ const PULL_RESIST_FACTOR = 0.35;
 const IMAGE_ZOOM_MIN_SCALE = 1;
 const IMAGE_ZOOM_MAX_SCALE = 3;
 const COMMENT_LONG_PRESS_MS = 550;
+const DOUBLE_TAP_MAX_DELAY_MS = 300;
+const DOUBLE_TAP_MAX_DISTANCE_PX = 24;
 
 type PinchTouches = {
   length: number;
   [index: number]: { clientX: number; clientY: number };
+};
+
+type TapSnapshot = {
+  time: number;
+  x: number;
+  y: number;
 };
 
 function getPinchDistance(touches: PinchTouches) {
@@ -156,6 +164,7 @@ export default function HomePage() {
   const [pinchScaleByPostId, setPinchScaleByPostId] = useState<Record<string, number>>({});
   const pinchStartDistanceRef = useRef(0);
   const pinchPostIdRef = useRef<string | null>(null);
+  const lastTapByPostIdRef = useRef<Record<string, TapSnapshot>>({});
   const commentLongPressTimeoutRef = useRef<number | null>(null);
   const pullStartYRef = useRef(0);
   const pullActiveRef = useRef(false);
@@ -657,6 +666,45 @@ export default function HomePage() {
     });
   }, []);
 
+  const triggerDoubleTapLike = useCallback((postId: string) => {
+    if (!viewerId || likePendingIds[postId] || likedPostIds[postId]) {
+      return;
+    }
+
+    void toggleLike(postId);
+  }, [likePendingIds, likedPostIds, toggleLike, viewerId]);
+
+  const handleImageTapEnd = useCallback((postId: string, event: TouchEvent<HTMLImageElement>) => {
+    if (pinchPostIdRef.current === postId || event.touches.length > 0) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    if (!touch) {
+      return;
+    }
+
+    const now = Date.now();
+    const previousTap = lastTapByPostIdRef.current[postId];
+    const isDoubleTap =
+      Boolean(previousTap) &&
+      now - previousTap.time <= DOUBLE_TAP_MAX_DELAY_MS &&
+      Math.hypot(previousTap.x - touch.clientX, previousTap.y - touch.clientY) <= DOUBLE_TAP_MAX_DISTANCE_PX;
+
+    lastTapByPostIdRef.current[postId] = {
+      time: now,
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+
+    if (!isDoubleTap) {
+      return;
+    }
+
+    delete lastTapByPostIdRef.current[postId];
+    triggerDoubleTapLike(postId);
+  }, [triggerDoubleTapLike]);
+
   useEffect(() => {
     if (!hasSupabaseEnv) {
       return;
@@ -1013,8 +1061,12 @@ export default function HomePage() {
             <img
               alt={post.caption ?? "Post image"}
               className="feed-image"
+              onDoubleClick={() => triggerDoubleTapLike(post.id)}
               onTouchCancel={(event) => handleImagePinchEnd(post.id, event)}
-              onTouchEnd={(event) => handleImagePinchEnd(post.id, event)}
+              onTouchEnd={(event) => {
+                handleImageTapEnd(post.id, event);
+                handleImagePinchEnd(post.id, event);
+              }}
               onTouchMove={(event) => handleImagePinchMove(post.id, event)}
               onTouchStart={(event) => handleImagePinchStart(post.id, event)}
               src={post.image_url}
@@ -1056,6 +1108,7 @@ export default function HomePage() {
   }, [
     avatarVersion,
     error,
+    handleImageTapEnd,
     handleImagePinchEnd,
     handleImagePinchMove,
     handleImagePinchStart,
@@ -1065,6 +1118,7 @@ export default function HomePage() {
     openComments,
     pinchScaleByPostId,
     posts,
+    triggerDoubleTapLike,
     toggleLike,
   ]);
 
