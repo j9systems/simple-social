@@ -235,7 +235,7 @@ p {
   border-top: 1px solid color-mix(in srgb, var(--line) 86%, #fff);
   background: color-mix(in srgb, var(--surface) 94%, #f4f1ea);
   box-shadow: 0 -2px 8px rgba(30, 29, 26, 0.08);
-  padding: 0.25rem 0 max(env(safe-area-inset-bottom), 0px);
+  padding: 0.15rem 0 max(env(safe-area-inset-bottom), 0px);
   z-index: 15;
 }
 
@@ -249,11 +249,11 @@ p {
   text-decoration: none;
   text-align: center;
   color: var(--muted);
-  padding: 0.5rem 0.45rem;
+  padding: 0.45rem 0.45rem;
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.1;
-  min-height: 3rem;
+  min-height: 2.8rem;
   margin: 0.15rem 0.2rem;
   border-radius: 999px;
   transition: color 140ms ease, transform 180ms ease;
@@ -279,6 +279,7 @@ p {
 .tab-icon {
   width: 1.2rem;
   height: 1.2rem;
+  transform: translateY(1px);
   transition: transform 180ms ease;
 }
 
@@ -786,6 +787,25 @@ button {
   color: #e0245e;
 }
 
+.comment-owner-menu {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+.comment-owner-menu-item {
+  border: 1px solid color-mix(in srgb, #b61f1f 35%, var(--line));
+  background: color-mix(in srgb, #b61f1f 8%, var(--surface));
+  color: #b61f1f;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.comment-owner-menu-item:disabled {
+  opacity: 0.7;
+}
+
 .comment-composer {
   position: sticky;
   bottom: calc(env(safe-area-inset-bottom) + 0.4rem);
@@ -849,8 +869,8 @@ button {
 }
 
 .profile-avatar {
-  width: 3.2rem;
-  height: 3.2rem;
+  width: 4.4rem;
+  height: 4.4rem;
 }
 
 .profile-copy {
@@ -1167,11 +1187,11 @@ button {
     right: 0;
     width: 100%;
     bottom: -0.2rem;
-    height: calc(4.6rem + env(safe-area-inset-bottom));
+    height: calc(4.25rem + env(safe-area-inset-bottom));
     border: 0;
     border-top: 1px solid var(--line);
     border-radius: 0;
-    padding: 0.1rem 0 max(env(safe-area-inset-bottom), 0px);
+    padding: 0 max(env(safe-area-inset-bottom), 0px);
     overflow: visible;
     box-shadow: none;
     background: var(--surface);
@@ -1179,9 +1199,9 @@ button {
 
   .tab-link {
     margin: 0;
-    min-height: 4rem;
+    min-height: 3.7rem;
     justify-content: flex-start;
-    padding-top: 0.68rem;
+    padding-top: 0.74rem;
     border-radius: 0;
   }
 

@@ -12,6 +12,7 @@ const FEED_FIELDS =
   "id,user_id,image_url,caption,created_at,username,avatar_url,like_count,comment_count";
 const IMAGE_ZOOM_MIN_SCALE = 1;
 const IMAGE_ZOOM_MAX_SCALE = 3;
+const COMMENT_LONG_PRESS_MS = 550;
 
 type PinchTouches = {
   length: number;
@@ -154,6 +155,8 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [commentSubmitPending, setCommentSubmitPending] = useState(false);
   const [commentSubmitError, setCommentSubmitError] = useState<string | null>(null);
+  const [commentOwnerMenuId, setCommentOwnerMenuId] = useState<string | null>(null);
+  const [commentDeletePendingId, setCommentDeletePendingId] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
@@ -164,6 +167,7 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
   const isPinchingRef = useRef(false);
   const ownerMenuRef = useRef<HTMLDivElement | null>(null);
   const ownerMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const commentLongPressTimeoutRef = useRef<number | null>(null);
 
   const loadComments = useCallback(async () => {
     if (!viewerId) {
@@ -335,7 +339,34 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
     setCommentsOpen(false);
     setCommentsError(null);
     setCommentSubmitError(null);
+    setCommentOwnerMenuId(null);
+    setCommentDeletePendingId(null);
   }, []);
+
+  const clearCommentLongPressTimeout = useCallback(() => {
+    if (commentLongPressTimeoutRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(commentLongPressTimeoutRef.current);
+    commentLongPressTimeoutRef.current = null;
+  }, []);
+
+  const startCommentLongPress = useCallback((comment: FeedComment) => {
+    if (!viewerId || comment.user_id !== viewerId) {
+      return;
+    }
+
+    clearCommentLongPressTimeout();
+    commentLongPressTimeoutRef.current = window.setTimeout(() => {
+      setCommentOwnerMenuId((current) => (current === comment.id ? null : comment.id));
+      commentLongPressTimeoutRef.current = null;
+    }, COMMENT_LONG_PRESS_MS);
+  }, [clearCommentLongPressTimeout, viewerId]);
+
+  const cancelCommentLongPress = useCallback(() => {
+    clearCommentLongPressTimeout();
+  }, [clearCommentLongPressTimeout]);
 
   const toggleCommentLike = useCallback(async (commentId: string) => {
     if (!viewerId || commentLikePendingIds[commentId]) {
@@ -463,6 +494,50 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
     );
     setCommentDraft("");
   }, [commentDraft, commentSubmitPending, post, viewerAvatarUrl, viewerId, viewerUsername]);
+
+  const deleteComment = useCallback(async (comment: FeedComment) => {
+    if (!viewerId || comment.user_id !== viewerId || commentDeletePendingId === comment.id) {
+      return;
+    }
+
+    if (!window.confirm("Delete this comment? This action cannot be undone.")) {
+      return;
+    }
+
+    setCommentDeletePendingId(comment.id);
+    setCommentsError(null);
+
+    const { error: deleteError } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", comment.id)
+      .eq("user_id", viewerId);
+
+    if (deleteError) {
+      setCommentsError(deleteError.message);
+      setCommentDeletePendingId(null);
+      return;
+    }
+
+    setComments((current) => current.filter((entry) => entry.id !== comment.id));
+    setPost((current) =>
+      current
+        ? { ...current, comment_count: Math.max(0, current.comment_count - 1) }
+        : current,
+    );
+    setLikedCommentIds((current) => {
+      const next = { ...current };
+      delete next[comment.id];
+      return next;
+    });
+    setCommentLikePendingIds((current) => {
+      const next = { ...current };
+      delete next[comment.id];
+      return next;
+    });
+    setCommentOwnerMenuId(null);
+    setCommentDeletePendingId(null);
+  }, [commentDeletePendingId, viewerId]);
 
   const handleImagePinchStart = useCallback((event: TouchEvent<HTMLImageElement>) => {
     if (event.touches.length < 2) {
@@ -670,6 +745,12 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
   }, [closeComments, commentsOpen]);
 
   useEffect(() => {
+    return () => {
+      clearCommentLongPressTimeout();
+    };
+  }, [clearCommentLongPressTimeout]);
+
+  useEffect(() => {
     if (!ownerMenuOpen) {
       return;
     }
@@ -862,9 +943,21 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
             {comments.map((comment) => {
               const commentLiked = Boolean(likedCommentIds[comment.id]);
               const pending = Boolean(commentLikePendingIds[comment.id]);
+              const isOwnedByViewer = Boolean(viewerId && comment.user_id === viewerId);
+              const isMenuOpen = commentOwnerMenuId === comment.id;
+              const isDeletePending = commentDeletePendingId === comment.id;
               return (
                 <article className="comment-row" key={comment.id}>
-                  <div className="comment-main">
+                  <div
+                    className="comment-main"
+                    onMouseDown={() => startCommentLongPress(comment)}
+                    onMouseLeave={cancelCommentLongPress}
+                    onMouseUp={cancelCommentLongPress}
+                    onTouchCancel={cancelCommentLongPress}
+                    onTouchEnd={cancelCommentLongPress}
+                    onTouchMove={cancelCommentLongPress}
+                    onTouchStart={() => startCommentLongPress(comment)}
+                  >
                     {comment.username ? (
                       <Link aria-label={`${comment.username}'s profile`} className="comment-avatar-link" href={`/u/${comment.username}`}>
                         <img
@@ -891,6 +984,20 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
                       {comment.text}
                     </p>
                   </div>
+                  {isOwnedByViewer && isMenuOpen ? (
+                    <div className="comment-owner-menu">
+                      <button
+                        className="comment-owner-menu-item"
+                        disabled={isDeletePending}
+                        onClick={() => {
+                          void deleteComment(comment);
+                        }}
+                        type="button"
+                      >
+                        {isDeletePending ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
+                  ) : null}
                   <button
                     aria-label={commentLiked ? "Unlike comment" : "Like comment"}
                     className={`comment-like-button ${commentLiked ? "is-liked" : ""}`}
