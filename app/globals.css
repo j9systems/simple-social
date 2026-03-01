@@ -62,12 +62,12 @@ p {
 }
 
 .brand-logo {
-  width: min(224px, 70vw);
+  width: min(64px, 22vw);
   height: auto;
 }
 
 .brand-logo-home {
-  width: min(132px, 46vw);
+  width: min(48px, 16vw);
 }
 
 .tab-bar {

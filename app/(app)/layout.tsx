@@ -124,10 +124,10 @@ export default function AppLayout({
         <Image
           alt="Simple Social"
           className={pathname === "/" ? "brand-logo brand-logo-home" : "brand-logo"}
-          height={36}
+          height={24}
           priority
-          src="/logo-simple-social.svg"
-          width={224}
+          src="https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg"
+          width={120}
         />
       </header>
 

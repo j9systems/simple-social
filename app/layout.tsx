@@ -7,11 +7,23 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
-      { url: "/pwa-icon.svg", type: "image/svg+xml" },
-      { url: "/pwa-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/pwa-512.png", sizes: "512x512", type: "image/png" },
+      {
+        url: "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg",
+        type: "image/svg+xml",
+      },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: [
+      {
+        url: "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg",
+        type: "image/svg+xml",
+      },
+    ],
+    apple: [
+      {
+        url: "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg",
+        type: "image/svg+xml",
+      },
+    ],
   },
 };
 
