@@ -123,8 +123,8 @@ export default function ConnectionsView({ mode, username }: ConnectionsViewProps
       }
 
       const connectionIds = (followRowsResponse.data ?? [])
-        .map((row) => (mode === "followers" ? row.follower_id : row.following_id))
-        .filter(Boolean) as string[];
+        .map((row) => ("follower_id" in row ? row.follower_id : row.following_id))
+        .filter((id): id is string => Boolean(id));
 
       if (connectionIds.length === 0) {
         setConnections([]);
@@ -132,27 +132,45 @@ export default function ConnectionsView({ mode, username }: ConnectionsViewProps
         return;
       }
 
-      let profilesResponse = await supabase
+      let profilesData: ConnectionRow[] | null = null;
+      const profilesResponse = await supabase
         .from("profiles")
         .select("id,username,avatar_url,full_name")
         .in("id", connectionIds);
 
       if (isMissingFullNameColumnError(profilesResponse.error)) {
-        profilesResponse = await supabase.from("profiles").select("id,username,avatar_url").in("id", connectionIds);
+        const fallbackProfilesResponse = await supabase
+          .from("profiles")
+          .select("id,username,avatar_url")
+          .in("id", connectionIds);
+
+        if (!mounted) {
+          return;
+        }
+
+        if (fallbackProfilesResponse.error) {
+          setError(fallbackProfilesResponse.error.message);
+          setLoading(false);
+          return;
+        }
+
+        profilesData = (fallbackProfilesResponse.data as ConnectionRow[] | null) ?? [];
+      } else {
+        if (profilesResponse.error) {
+          setError(profilesResponse.error.message);
+          setLoading(false);
+          return;
+        }
+
+        profilesData = (profilesResponse.data as ConnectionRow[] | null) ?? [];
       }
 
       if (!mounted) {
         return;
       }
 
-      if (profilesResponse.error) {
-        setError(profilesResponse.error.message);
-        setLoading(false);
-        return;
-      }
-
       const profileById = new Map<string, ConnectionRow>();
-      for (const row of (profilesResponse.data as ConnectionRow[] | null) ?? []) {
+      for (const row of profilesData) {
         if (row.id) {
           profileById.set(row.id, row);
         }
