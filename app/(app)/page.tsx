@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedPost } from "@/lib/types";
@@ -16,11 +16,62 @@ function formatDate(isoDate: string) {
   });
 }
 
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path
+        d="M16.8 4.8c2.7 0 4.7 2.1 4.7 4.8 0 4.4-4.3 7.6-8.4 11.2a1.2 1.2 0 0 1-1.6 0C7.4 17.2 3 14 3 9.6 3 7 5 4.8 7.7 4.8c1.6 0 3.1.8 4.1 2.1 1-1.3 2.5-2.1 4.1-2.1Z"
+        fill={filled ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path
+        d="M4.5 5.3A2.8 2.8 0 0 1 7.3 2.5h9.4a2.8 2.8 0 0 1 2.8 2.8v8a2.8 2.8 0 0 1-2.8 2.8h-7l-4 3.4a.7.7 0 0 1-1.2-.5v-2.9A2.8 2.8 0 0 1 1.7 13.3v-8A2.8 2.8 0 0 1 4.5 5.3Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function HomePage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({});
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
+  const lastImageTapAtRef = useRef<Record<string, number>>({});
+
+  const toggleLike = useCallback((postId: string) => {
+    setLikedPostIds((current) => ({
+      ...current,
+      [postId]: !current[postId],
+    }));
+  }, []);
+
+  const handleImageTap = useCallback((postId: string, eventTimeStamp: number) => {
+    const now = eventTimeStamp;
+    const lastTapAt = lastImageTapAtRef.current[postId] ?? 0;
+    const isDoubleTap = now - lastTapAt < 300;
+
+    if (isDoubleTap) {
+      toggleLike(postId);
+      lastImageTapAtRef.current[postId] = 0;
+      return;
+    }
+
+    lastImageTapAtRef.current[postId] = now;
+  }, [toggleLike]);
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -130,8 +181,12 @@ export default function HomePage() {
 
     return (
       <div className="feed-list">
-        {posts.map((post) => (
-          <article className="feed-post" key={post.id}>
+        {posts.map((post) => {
+          const liked = Boolean(likedPostIds[post.id]);
+          const displayedLikeCount = post.like_count + (liked ? 1 : 0);
+
+          return (
+            <article className="feed-post" key={post.id}>
             <header className="feed-post-header">
               {post.username ? (
                 <Link className="feed-user-link" href={`/u/${post.username}`}>
@@ -160,18 +215,43 @@ export default function HomePage() {
               )}
             </header>
 
-            <img alt={post.caption ?? "Post image"} className="feed-image" src={post.image_url} />
+            <img
+              alt={post.caption ?? "Post image"}
+              className="feed-image"
+              onClick={(event) => handleImageTap(post.id, event.timeStamp)}
+              src={post.image_url}
+            />
+
+            <div className="feed-actions">
+              <button
+                aria-label={liked ? "Unlike post" : "Like post"}
+                className={`feed-action-button ${liked ? "is-liked" : ""}`}
+                onClick={() => toggleLike(post.id)}
+                type="button"
+              >
+                <HeartIcon filled={liked} />
+              </button>
+              <button
+                aria-label="Comment"
+                className="feed-action-button"
+                type="button"
+              >
+                <CommentIcon />
+              </button>
+            </div>
+
             {post.caption ? <p className="feed-caption">{post.caption}</p> : null}
 
             <footer className="feed-stats">
-              <span>{post.like_count} likes</span>
+              <span>{displayedLikeCount} likes</span>
               <span>{post.comment_count} comments</span>
             </footer>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     );
-  }, [avatarVersion, error, loading, posts]);
+  }, [avatarVersion, error, handleImageTap, likedPostIds, loading, posts, toggleLike]);
 
   return (
     <section className="home-page">

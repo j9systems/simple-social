@@ -261,6 +261,40 @@ button {
   display: block;
 }
 
+.feed-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 0.85rem 0.1rem;
+}
+
+.feed-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  padding: 0;
+  border-radius: 999px;
+  transition: transform 120ms ease;
+}
+
+.feed-action-button:active {
+  transform: scale(0.94);
+}
+
+.feed-action-button svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.feed-action-button.is-liked {
+  color: #e0245e;
+}
+
 .feed-caption {
   color: var(--foreground);
   padding: 0.8rem 0.85rem 0;
