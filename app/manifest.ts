@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
+const PWA_ICON_URL = "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301b";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Simple Social",
@@ -11,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#0d77d9",
     icons: [
       {
-        src: "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg",
+        src: PWA_ICON_URL,
         sizes: "any",
         type: "image/svg+xml",
         purpose: "maskable",
