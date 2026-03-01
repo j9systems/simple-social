@@ -79,14 +79,17 @@ export default function AppLayout({
 }>) {
   const pathname = usePathname();
   const router = useRouter();
+  const isHomeFeed = pathname === "/";
   const [checkingAuth, setCheckingAuth] = useState(hasSupabaseEnv);
   const [session, setSession] = useState<Session | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsDebugMessage, setNotificationsDebugMessage] = useState<string | null>(null);
+  const [isTopBarHidden, setIsTopBarHidden] = useState(false);
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const lastScrollYRef = useRef(0);
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
 
@@ -253,6 +256,40 @@ export default function AppLayout({
     };
   }, [notificationsOpen]);
 
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setIsTopBarHidden(false);
+      lastScrollYRef.current = window.scrollY;
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isHomeFeed) {
+      return;
+    }
+
+    const onScroll = () => {
+      const nextScrollY = window.scrollY;
+      const delta = nextScrollY - lastScrollYRef.current;
+      if (delta > 0 && nextScrollY > 0) {
+        setIsTopBarHidden(true);
+      } else if (delta < 0) {
+        setIsTopBarHidden(false);
+      }
+      lastScrollYRef.current = nextScrollY;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [isHomeFeed]);
+
   if (checkingAuth) {
     return (
       <main className="page-wrap">
@@ -281,7 +318,7 @@ export default function AppLayout({
 
   return (
     <div className="app-shell">
-      <header className="top-bar">
+      <header className={`top-bar ${isHomeFeed && isTopBarHidden ? "is-hidden-on-scroll" : ""}`}>
         <Image
           alt="Simple Social"
           className={pathname === "/" ? "brand-logo brand-logo-home" : "brand-logo"}

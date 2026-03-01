@@ -71,6 +71,11 @@ p {
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--background) 92%, white);
   backdrop-filter: blur(8px);
+  transition: transform 180ms ease;
+}
+
+.top-bar.is-hidden-on-scroll {
+  transform: translateY(-100%);
 }
 
 .brand-logo {
@@ -545,7 +550,7 @@ button {
 
 .feed-caption {
   color: var(--foreground);
-  padding: 0.12rem 0.85rem 0;
+  padding: 0.12rem 0.85rem 0.38rem;
 }
 
 .feed-caption strong {
