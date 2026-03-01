@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import type { TouchEvent } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedComment, FeedPost } from "@/lib/types";
@@ -14,7 +15,16 @@ const PULL_RESIST_START = 80;
 const PULL_RESIST_FACTOR = 0.35;
 const IMAGE_ZOOM_MIN_SCALE = 1;
 const IMAGE_ZOOM_MAX_SCALE = 3;
-const IMAGE_ZOOM_STEP = 0.25;
+
+function getPinchDistance(touches: TouchList) {
+  if (touches.length < 2) {
+    return 0;
+  }
+
+  const first = touches[0];
+  const second = touches[1];
+  return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+}
 
 function formatDate(isoDate: string) {
   return new Date(isoDate).toLocaleString(undefined, {
@@ -134,10 +144,9 @@ export default function HomePage() {
   const [isPullingFeed, setIsPullingFeed] = useState(false);
   const [isRefreshingFeed, setIsRefreshingFeed] = useState(false);
   const [feedRefreshTick, setFeedRefreshTick] = useState(0);
-  const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
-  const [zoomScale, setZoomScale] = useState(1);
-  const lastImageTapAtRef = useRef<Record<string, number>>({});
-  const imageTapTimeoutRef = useRef<Record<string, number>>({});
+  const [pinchScaleByPostId, setPinchScaleByPostId] = useState<Record<string, number>>({});
+  const pinchStartDistanceRef = useRef(0);
+  const pinchPostIdRef = useRef<string | null>(null);
   const pullStartYRef = useRef(0);
   const pullActiveRef = useRef(false);
   const pullDistanceRef = useRef(0);
@@ -514,39 +523,53 @@ export default function HomePage() {
 
   }, [commentDraftByPostId, commentSubmitPendingByPostId, openCommentsPostId, viewerAvatarUrl, viewerId, viewerUsername]);
 
-  const openZoomedImage = useCallback((src: string, alt: string) => {
-    setZoomedImage({ src, alt });
-    setZoomScale(IMAGE_ZOOM_MIN_SCALE);
-  }, []);
-
-  const closeZoomedImage = useCallback(() => {
-    setZoomedImage(null);
-    setZoomScale(IMAGE_ZOOM_MIN_SCALE);
-  }, []);
-
-  const handleImageTap = useCallback((postId: string, src: string, alt: string, eventTimeStamp: number) => {
-    const now = eventTimeStamp;
-    const lastTapAt = lastImageTapAtRef.current[postId] ?? 0;
-    const isDoubleTap = now - lastTapAt < 300;
-
-    if (isDoubleTap) {
-      const pendingTimeout = imageTapTimeoutRef.current[postId];
-      if (pendingTimeout) {
-        window.clearTimeout(pendingTimeout);
-        delete imageTapTimeoutRef.current[postId];
-      }
-      toggleLike(postId);
-      lastImageTapAtRef.current[postId] = 0;
+  const handleImagePinchStart = useCallback((postId: string, event: TouchEvent<HTMLImageElement>) => {
+    if (event.touches.length < 2) {
       return;
     }
 
-    lastImageTapAtRef.current[postId] = now;
-    const timeoutId = window.setTimeout(() => {
-      openZoomedImage(src, alt);
-      delete imageTapTimeoutRef.current[postId];
-    }, 310);
-    imageTapTimeoutRef.current[postId] = timeoutId;
-  }, [openZoomedImage, toggleLike]);
+    event.stopPropagation();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    pinchPostIdRef.current = postId;
+    pinchStartDistanceRef.current = getPinchDistance(event.touches);
+    setPinchScaleByPostId((current) => ({ ...current, [postId]: IMAGE_ZOOM_MIN_SCALE }));
+  }, []);
+
+  const handleImagePinchMove = useCallback((postId: string, event: TouchEvent<HTMLImageElement>) => {
+    if (pinchPostIdRef.current !== postId || event.touches.length < 2 || pinchStartDistanceRef.current <= 0) {
+      return;
+    }
+
+    event.stopPropagation();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    const distance = getPinchDistance(event.touches);
+    const nextScale = Math.max(
+      IMAGE_ZOOM_MIN_SCALE,
+      Math.min(IMAGE_ZOOM_MAX_SCALE, distance / pinchStartDistanceRef.current),
+    );
+    setPinchScaleByPostId((current) => ({ ...current, [postId]: nextScale }));
+  }, []);
+
+  const handleImagePinchEnd = useCallback((postId: string, event: TouchEvent<HTMLImageElement>) => {
+    if (pinchPostIdRef.current !== postId || event.touches.length >= 2) {
+      return;
+    }
+
+    event.stopPropagation();
+    pinchPostIdRef.current = null;
+    pinchStartDistanceRef.current = 0;
+    setPinchScaleByPostId((current) => {
+      const next = { ...current };
+      delete next[postId];
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -703,43 +726,15 @@ export default function HomePage() {
   }, [closeComments, openCommentsPostId]);
 
   useEffect(() => {
-    if (!zoomedImage) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        closeZoomedImage();
-      }
-    };
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [closeZoomedImage, zoomedImage]);
-
-  useEffect(() => {
-    const timeoutLookup = imageTapTimeoutRef.current;
-    return () => {
-      const activeTimeoutIds = Object.values(timeoutLookup);
-      for (const timeoutId of activeTimeoutIds) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     pullDistanceRef.current = pullDistance;
   }, [pullDistance]);
 
   useEffect(() => {
     const onTouchStart = (event: TouchEvent) => {
       if (!hasSupabaseEnv || isRefreshingFeed || openCommentsPostId) {
+        return;
+      }
+      if (event.touches.length !== 1) {
         return;
       }
       if (window.scrollY > 0) {
@@ -752,6 +747,9 @@ export default function HomePage() {
 
     const onTouchMove = (event: TouchEvent) => {
       if (!pullActiveRef.current || isRefreshingFeed) {
+        return;
+      }
+      if (event.touches.length !== 1) {
         return;
       }
       if (window.scrollY > 0) {
@@ -904,8 +902,12 @@ export default function HomePage() {
             <img
               alt={post.caption ?? "Post image"}
               className="feed-image"
-              onClick={(event) => handleImageTap(post.id, post.image_url, post.caption ?? "Post image", event.timeStamp)}
+              onTouchCancel={(event) => handleImagePinchEnd(post.id, event)}
+              onTouchEnd={(event) => handleImagePinchEnd(post.id, event)}
+              onTouchMove={(event) => handleImagePinchMove(post.id, event)}
+              onTouchStart={(event) => handleImagePinchStart(post.id, event)}
               src={post.image_url}
+              style={{ transform: `scale(${pinchScaleByPostId[post.id] ?? IMAGE_ZOOM_MIN_SCALE})` }}
             />
 
             <div className="feed-actions">
@@ -940,7 +942,20 @@ export default function HomePage() {
         })}
       </div>
     );
-  }, [avatarVersion, error, handleImageTap, likePendingIds, likedPostIds, loading, openComments, posts, toggleLike]);
+  }, [
+    avatarVersion,
+    error,
+    handleImagePinchEnd,
+    handleImagePinchMove,
+    handleImagePinchStart,
+    likePendingIds,
+    likedPostIds,
+    loading,
+    openComments,
+    pinchScaleByPostId,
+    posts,
+    toggleLike,
+  ]);
 
   const openCommentsPost = openCommentsPostId
     ? posts.find((post) => post.id === openCommentsPostId) ?? null
@@ -1086,56 +1101,6 @@ export default function HomePage() {
         </form>
         {commentSubmitError ? <p className="comments-empty-state">{commentSubmitError}</p> : null}
       </section>
-      {zoomedImage ? (
-        <div
-          aria-label="Image zoom viewer"
-          aria-modal="true"
-          className="image-zoom-backdrop"
-          onClick={closeZoomedImage}
-          role="dialog"
-        >
-          <div className="image-zoom-frame" onClick={(event) => event.stopPropagation()}>
-            <img
-              alt={zoomedImage.alt}
-              className="image-zoom-image"
-              draggable={false}
-              src={zoomedImage.src}
-              style={{ transform: `scale(${zoomScale})` }}
-            />
-          </div>
-          <div className="image-zoom-controls" onClick={(event) => event.stopPropagation()}>
-            <button
-              aria-label="Zoom out"
-              className="image-zoom-button"
-              disabled={zoomScale <= IMAGE_ZOOM_MIN_SCALE}
-              onClick={() => setZoomScale((current) => Math.max(IMAGE_ZOOM_MIN_SCALE, current - IMAGE_ZOOM_STEP))}
-              type="button"
-            >
-              -
-            </button>
-            <span aria-live="polite" className="image-zoom-scale">
-              {Math.round(zoomScale * 100)}%
-            </span>
-            <button
-              aria-label="Zoom in"
-              className="image-zoom-button"
-              disabled={zoomScale >= IMAGE_ZOOM_MAX_SCALE}
-              onClick={() => setZoomScale((current) => Math.min(IMAGE_ZOOM_MAX_SCALE, current + IMAGE_ZOOM_STEP))}
-              type="button"
-            >
-              +
-            </button>
-            <button
-              aria-label="Close image viewer"
-              className="image-zoom-button"
-              onClick={closeZoomedImage}
-              type="button"
-            >
-              x
-            </button>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }
