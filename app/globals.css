@@ -100,7 +100,7 @@ p {
   position: absolute;
   top: calc(100% + 0.4rem);
   right: 1.25rem;
-  width: min(28rem, calc(100vw - 1.2rem));
+  width: min(28rem, calc(100vw - 2.5rem));
   max-height: min(70dvh, 36rem);
   border: 1px solid var(--line);
   background: var(--surface);

@@ -134,10 +134,23 @@ export default function AppLayout({
       await markNotificationAsRead(notification.id, viewerId);
     }
 
-    if (notification.type === "follow" && notification.actor_username) {
-      router.push(`/u/${notification.actor_username}`);
-      setNotificationsOpen(false);
-      return;
+    if (notification.type === "follow") {
+      let targetUsername = notification.actor_username;
+
+      if (!targetUsername && notification.actor_profile_id) {
+        const { data: actorProfile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", notification.actor_profile_id)
+          .maybeSingle();
+        targetUsername = (actorProfile?.username as string | null) ?? null;
+      }
+
+      if (targetUsername) {
+        router.push(`/u/${targetUsername}`);
+        setNotificationsOpen(false);
+        return;
+      }
     }
 
     if (notification.post_id) {

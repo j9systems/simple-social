@@ -1,3 +1,5 @@
+import PostDetailView from "@/app/(app)/p/[postId]/post-detail-view";
+
 type PostPageProps = {
   params: Promise<{ postId: string }>;
 };
@@ -5,10 +7,5 @@ type PostPageProps = {
 export default async function PostPage({ params }: PostPageProps) {
   const { postId } = await params;
 
-  return (
-    <section>
-      <h1>Post</h1>
-      <p>Viewing post {postId}</p>
-    </section>
-  );
+  return <PostDetailView postId={postId} />;
 }
