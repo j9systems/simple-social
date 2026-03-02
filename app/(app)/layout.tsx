@@ -500,7 +500,11 @@ export default function AppLayout({
         </main>
       ) : null}
 
-      <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
+        {shouldShowAuthenticatedShell ? (
+          <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
+          ...
+          </nav>
+        ) : null}
         <div className="tab-bar-inner">
           {tabs.map((tab) => (
             <Link
