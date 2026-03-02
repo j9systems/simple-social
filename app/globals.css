@@ -35,15 +35,6 @@
   box-sizing: border-box;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: "Segoe UI", sans-serif;
-  margin: 0;
-  min-height: 100dvh;
-  -webkit-text-size-adjust: 100%;
-}
-
 html {
   background: var(--background);
 }
@@ -52,6 +43,16 @@ html,
 body {
   height: 100%;
   margin: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Segoe UI", sans-serif;
+  -webkit-text-size-adjust: 100%;
+
+  /* Critical: prevent iOS body scroll / visual viewport snapping. */
+  overflow: hidden;
 }
 
 h1 {
@@ -64,18 +65,33 @@ p {
   color: var(--muted);
 }
 
+/* App shell must fully occupy the visual viewport */
+.app-shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+  Make the main content the scroll container (not body).
+  This is the key change that prevents the tab bar from "snapping" when content loads.
+*/
 .page-wrap {
   width: min(760px, 100%);
   margin: 0 auto;
+
+  /* top/right/left padding stays the same */
   padding: 1.25rem 1.25rem var(--tabbar-total-height, 64px);
+
+  /* becomes scroll container */
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
 .page-wrap-no-top-bar {
   padding-top: calc(1.25rem + env(safe-area-inset-top));
-}
-
-.app-shell {
-  min-height: 100dvh;
 }
 
 .top-bar {
@@ -91,6 +107,9 @@ p {
   background: color-mix(in srgb, var(--background) 92%, white);
   backdrop-filter: blur(8px);
   transition: transform 180ms ease;
+
+  /* Ensure sticky header doesn't shrink inside flex column */
+  flex: 0 0 auto;
 }
 
 .top-bar.is-hidden-on-scroll {
@@ -243,23 +262,18 @@ p {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0; /* always anchored to bottom — never env() here */
+  bottom: 0;
 
-  /* Visuals */
   border-top: 1px solid var(--line);
   background: var(--tabbar-bg, #fff);
   box-shadow: 0 -4px 14px rgba(30, 29, 26, 0.08);
   z-index: 1000;
 
-  /* Stable height calculation */
   height: calc(var(--tabbar-height, 64px) + env(safe-area-inset-bottom));
-
-  /* Safe-area applied as padding, not position */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
 
-  /* Prevent layout reflow from internal flex children */
   display: flex;
   align-items: stretch;
 }
@@ -369,6 +383,7 @@ p {
   align-content: center;
 }
 
+/* auth page lives outside app-shell scroll changes; safe to keep */
 .auth-form {
   display: grid;
   gap: 0.6rem;
@@ -513,7 +528,7 @@ button {
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: 0;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -1279,7 +1294,6 @@ button {
   .home-page .feed-post:last-child {
     border-bottom: 0;
   }
-
 }
 
 @keyframes spin {
@@ -1287,5 +1301,3 @@ button {
     transform: rotate(360deg);
   }
 }
-
-
