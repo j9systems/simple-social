@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
+import { THEME_COOKIE_KEY } from "@/lib/theme";
 import "./globals.css";
 
 const PWA_ICON_URL =
@@ -38,13 +40,16 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const serverTheme = cookieStore.get(THEME_COOKIE_KEY)?.value === "dark" ? "dark" : "light";
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-theme={serverTheme} style={{ colorScheme: serverTheme }} suppressHydrationWarning>
       <head>
         {/* iOS status bar styling (PWA / standalone) */}
         <meta
@@ -57,17 +62,28 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `(function(){
   try{
-    var theme = localStorage.getItem('simple-social-theme') === 'dark' ? 'dark' : 'light';
+    var storedTheme = localStorage.getItem('simple-social-theme');
+    var serverTheme = '${serverTheme}';
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var theme = storedTheme === 'dark' || storedTheme === 'light'
+      ? storedTheme
+      : (serverTheme === 'dark' ? 'dark' : (prefersDark ? 'dark' : 'light'));
     var color = theme === 'dark' ? '#131415' : '#f7f7f5';
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
     var m = document.querySelector('meta[name="theme-color"]');
     if(m){ m.setAttribute('content', color); }
+    var ts = performance.now();
+    window.__ssThemeSetTs = ts;
+    console.log('[perf] theme attribute set @', ts.toFixed(2) + 'ms', theme);
   }catch(_){
     document.documentElement.dataset.theme = 'light';
     document.documentElement.style.colorScheme = 'light';
     var m = document.querySelector('meta[name="theme-color"]');
     if(m){ m.setAttribute('content', '#f7f7f5'); }
+    var ts = performance.now();
+    window.__ssThemeSetTs = ts;
+    console.log('[perf] theme attribute set @', ts.toFixed(2) + 'ms', 'light');
   }
 })();`,
           }}

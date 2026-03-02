@@ -92,7 +92,10 @@ export default function AppLayout({
   const [avatarVersion, setAvatarVersion] = useState(0);
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const tabBarRef = useRef<HTMLElement | null>(null);
   const lastScrollYRef = useRef(0);
+  const navMountLoggedRef = useRef(false);
+  const firstPaintLoggedRef = useRef(false);
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
 
@@ -344,35 +347,61 @@ export default function AppLayout({
     };
   }, [isHomeFeed]);
 
-  if (checkingAuth) {
-    return (
-      <main className="page-wrap">
-        <p>Checking session...</p>
-      </main>
-    );
-  }
+  useEffect(() => {
+    const hasPaintSupport = typeof PerformanceObserver !== "undefined";
+    const existingFirstPaint = performance.getEntriesByName("first-paint")[0];
 
-  if (!hasSupabaseEnv) {
-    return (
-      <main className="page-wrap auth-page">
-        <section className="card">
-          <h1>Supabase not configured</h1>
-          <p>
-            Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{" "}
-            in <code>.env.local</code>.
-          </p>
-        </section>
-      </main>
-    );
-  }
+    if (existingFirstPaint && !firstPaintLoggedRef.current) {
+      firstPaintLoggedRef.current = true;
+      console.log("[perf] first paint @", existingFirstPaint.startTime.toFixed(2) + "ms");
+      return;
+    }
 
-  if (!session) {
-    return null;
-  }
+    if (!hasPaintSupport) {
+      return;
+    }
+
+    const observer = new PerformanceObserver((entryList) => {
+      if (firstPaintLoggedRef.current) {
+        return;
+      }
+
+      for (const entry of entryList.getEntries()) {
+        if (entry.name === "first-paint") {
+          firstPaintLoggedRef.current = true;
+          console.log("[perf] first paint @", entry.startTime.toFixed(2) + "ms");
+          observer.disconnect();
+          break;
+        }
+      }
+    });
+
+    observer.observe({ type: "paint", buffered: true });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!tabBarRef.current || navMountLoggedRef.current) {
+      return;
+    }
+
+    navMountLoggedRef.current = true;
+    const navTs = performance.now();
+    const themeTs = (window as Window & { __ssThemeSetTs?: number }).__ssThemeSetTs;
+    console.log("[perf] nav first render @", navTs.toFixed(2) + "ms");
+    if (typeof themeTs === "number") {
+      console.log("[perf] nav rendered after theme by", (navTs - themeTs).toFixed(2) + "ms");
+    }
+  }, [checkingAuth, session]);
+
+  const shouldShowAuthenticatedShell = Boolean(hasSupabaseEnv && session && !checkingAuth);
 
   return (
     <div className="app-shell">
-      {!isProfilePage ? (
+      {shouldShowAuthenticatedShell && !isProfilePage ? (
         <header className={`top-bar ${isHomeFeed && isTopBarHidden ? "is-hidden-on-scroll" : ""}`}>
           <Image
             alt="Simple Social"
@@ -449,9 +478,29 @@ export default function AppLayout({
         </header>
       ) : null}
 
-      <main className={isProfilePage ? "page-wrap page-wrap-no-top-bar" : "page-wrap"}>{children}</main>
+      {shouldShowAuthenticatedShell ? (
+        <main className={isProfilePage ? "page-wrap page-wrap-no-top-bar" : "page-wrap"}>{children}</main>
+      ) : null}
 
-      <nav aria-label="Primary" className="tab-bar">
+      {!hasSupabaseEnv ? (
+        <main className="page-wrap auth-page">
+          <section className="card">
+            <h1>Supabase not configured</h1>
+            <p>
+              Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in{" "}
+              <code>.env.local</code>.
+            </p>
+          </section>
+        </main>
+      ) : null}
+
+      {hasSupabaseEnv && checkingAuth ? (
+        <main className="page-wrap">
+          <p>Checking session...</p>
+        </main>
+      ) : null}
+
+      <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
         <div className="tab-bar-inner">
           {tabs.map((tab) => (
             <Link

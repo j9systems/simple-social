@@ -1,4 +1,5 @@
 export const THEME_STORAGE_KEY = "simple-social-theme";
+export const THEME_COOKIE_KEY = "simple-social-theme";
 
 export type ThemeMode = "light" | "dark";
 
@@ -27,4 +28,7 @@ export function applyTheme(theme: ThemeMode) {
   if (themeColorMeta) {
     themeColorMeta.setAttribute("content", themeColor);
   }
+
+  // Keep SSR and client in sync on reloads.
+  document.cookie = `${THEME_COOKIE_KEY}=${theme}; path=/; max-age=31536000; samesite=lax`;
 }
