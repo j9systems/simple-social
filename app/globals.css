@@ -243,14 +243,25 @@ p {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0; /* <-- change this */
+  bottom: 0; /* always anchored to bottom — never env() here */
+
+  /* Visuals */
   border-top: 1px solid var(--line);
   background: var(--tabbar-bg, #fff);
   box-shadow: 0 -4px 14px rgba(30, 29, 26, 0.08);
+  z-index: 1000;
+
+  /* Stable height calculation */
+  height: calc(var(--tabbar-height, 64px) + env(safe-area-inset-bottom));
+
+  /* Safe-area applied as padding, not position */
+  padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  z-index: 1000;
+
+  /* Prevent layout reflow from internal flex children */
+  display: flex;
+  align-items: stretch;
 }
 
 .tab-bar-inner {
