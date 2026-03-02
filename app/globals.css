@@ -40,7 +40,6 @@ body {
   color: var(--foreground);
   font-family: "Segoe UI", sans-serif;
   margin: 0;
-  min-height: 100vh;
   min-height: 100dvh;
   -webkit-text-size-adjust: 100%;
 }
@@ -76,7 +75,6 @@ p {
 }
 
 .app-shell {
-  min-height: 100vh;
   min-height: 100dvh;
 }
 
