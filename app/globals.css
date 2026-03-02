@@ -1285,8 +1285,9 @@ nav {
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
+  height: 64px !important;
+  padding-bottom: 0 !important;
   background: red !important;
-  z-index: 9999 !important;
 }
 #tabbar { outline: 6px solid blue !important; }
 
