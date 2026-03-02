@@ -10,7 +10,8 @@ import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
 import { supabase } from "@/lib/supabase";
 import type { NotificationItem } from "@/lib/types";
 
-const PWA_ICON_URL = "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301c";
+const PWA_ICON_URL =
+  "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301c";
 
 const tabs = [
   {
@@ -78,42 +79,43 @@ type AppShellProps = Readonly<{
   };
 }>;
 
-export default function AppShell({
-  children,
-  viewer,
-}: AppShellProps) {
+export default function AppShell({ children, viewer }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+
   const isHomeFeed = pathname === "/";
   const isProfilePage = pathname === "/profile";
   const useHomeBrandTreatment = pathname === "/" || pathname === "/search" || pathname === "/upload";
+
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsDebugMessage, setNotificationsDebugMessage] = useState<string | null>(null);
+
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
   const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
+
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
   const tabBarRef = useRef<HTMLElement | null>(null);
+
   const lastScrollYRef = useRef(0);
   const navMountLoggedRef = useRef(false);
   const firstPaintLoggedRef = useRef(false);
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
 
-  const loadNotifications = useCallback(async (showLoading = true) => {
-    if (showLoading) {
-      setNotificationsLoading(true);
-    }
-    const result = await listNotifications(viewer.id);
-    setNotifications(result.items);
-    setNotificationsDebugMessage(result.errorMessage);
-    if (showLoading) {
-      setNotificationsLoading(false);
-    }
-  }, [viewer.id]);
+  const loadNotifications = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) setNotificationsLoading(true);
+      const result = await listNotifications(viewer.id);
+      setNotifications(result.items);
+      setNotificationsDebugMessage(result.errorMessage);
+      if (showLoading) setNotificationsLoading(false);
+    },
+    [viewer.id],
+  );
 
   const openNotifications = async () => {
     if (!notificationsOpen) {
@@ -162,28 +164,51 @@ export default function AppShell({
     }
   };
 
-  const handleTabClick = useCallback((event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href !== "/" || pathname !== "/") {
-      return;
-    }
+  const handleTabClick = useCallback(
+    (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
+      if (href !== "/" || pathname !== "/") return;
+      if (window.scrollY <= 0) return;
 
-    if (window.scrollY <= 0) {
-      return;
-    }
+      event.preventDefault();
+      setIsTopBarHidden(false);
+      window.dispatchEvent(new Event(HOME_TAB_RESELECT_EVENT));
+    },
+    [pathname],
+  );
 
-    event.preventDefault();
-    setIsTopBarHidden(false);
-    window.dispatchEvent(new Event(HOME_TAB_RESELECT_EVENT));
-  }, [pathname]);
+  // ---- KEY FIX: keep tab bar anchored during iOS VisualViewport changes (address bar collapse/expand) ----
+  useEffect(() => {
+    const el = tabBarRef.current;
+    if (!el) return;
+
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      // offsetTop changes when Safari collapses/expands bars; transform keeps the fixed bar visually glued
+      const offset = Math.max(0, vv.offsetTop || 0);
+      el.style.transform = `translate3d(0, ${offset}px, 0)`;
+    };
+
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    window.addEventListener("orientationchange", update);
+
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, []);
+  // -----------------------------------------------------------------------------------------------
 
   useEffect(() => {
     let active = true;
 
     const loadNotificationBadge = async () => {
       const result = await listNotifications(viewer.id);
-      if (!active) {
-        return;
-      }
+      if (!active) return;
       setNotifications(result.items);
       setNotificationsDebugMessage(result.errorMessage);
     };
@@ -205,12 +230,10 @@ export default function AppShell({
         .eq("id", viewer.id)
         .maybeSingle();
 
-      if (!active) {
-        return;
-      }
+      if (!active) return;
 
       const metadata = viewer.metadata ?? {};
-      const metadataAvatarUrl = typeof metadata.avatar_url === "string" ? metadata.avatar_url : null;
+      const metadataAvatarUrl = typeof (metadata as any).avatar_url === "string" ? ((metadata as any).avatar_url as string) : null;
       setViewerTabAvatarUrl((profileData?.avatar_url as string | null) ?? metadataAvatarUrl);
     };
 
@@ -229,29 +252,17 @@ export default function AppShell({
   }, [viewer.id, viewer.metadata]);
 
   useEffect(() => {
-    if (!notificationsOpen) {
-      return;
-    }
+    if (!notificationsOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!notificationsPanelRef.current) {
-        return;
-      }
-
-      if (notificationsPanelRef.current.contains(event.target as Node)) {
-        return;
-      }
-      if (notificationsButtonRef.current?.contains(event.target as Node)) {
-        return;
-      }
-
+      if (!notificationsPanelRef.current) return;
+      if (notificationsPanelRef.current.contains(event.target as Node)) return;
+      if (notificationsButtonRef.current?.contains(event.target as Node)) return;
       setNotificationsOpen(false);
     };
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setNotificationsOpen(false);
-      }
+      if (event.key === "Escape") setNotificationsOpen(false);
     };
 
     window.addEventListener("mousedown", handlePointerDown);
@@ -275,26 +286,18 @@ export default function AppShell({
   }, [pathname]);
 
   useEffect(() => {
-    if (!isHomeFeed) {
-      return;
-    }
+    if (!isHomeFeed) return;
 
     const onScroll = () => {
       const nextScrollY = window.scrollY;
       const delta = nextScrollY - lastScrollYRef.current;
-      if (delta > 0 && nextScrollY > 0) {
-        setIsTopBarHidden(true);
-      } else if (delta < 0) {
-        setIsTopBarHidden(false);
-      }
+      if (delta > 0 && nextScrollY > 0) setIsTopBarHidden(true);
+      else if (delta < 0) setIsTopBarHidden(false);
       lastScrollYRef.current = nextScrollY;
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-    };
+    return () => window.removeEventListener("scroll", onScroll);
   }, [isHomeFeed]);
 
   useEffect(() => {
@@ -307,15 +310,10 @@ export default function AppShell({
       return;
     }
 
-    if (!hasPaintSupport) {
-      return;
-    }
+    if (!hasPaintSupport) return;
 
     const observer = new PerformanceObserver((entryList) => {
-      if (firstPaintLoggedRef.current) {
-        return;
-      }
-
+      if (firstPaintLoggedRef.current) return;
       for (const entry of entryList.getEntries()) {
         if (entry.name === "first-paint") {
           firstPaintLoggedRef.current = true;
@@ -327,20 +325,16 @@ export default function AppShell({
     });
 
     observer.observe({ type: "paint", buffered: true });
-
-    return () => {
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!tabBarRef.current || navMountLoggedRef.current) {
-      return;
-    }
+    if (!tabBarRef.current || navMountLoggedRef.current) return;
 
     navMountLoggedRef.current = true;
     const navTs = performance.now();
     const themeTs = (window as Window & { __ssThemeSetTs?: number }).__ssThemeSetTs;
+
     console.log("[perf] nav first render @", navTs.toFixed(2) + "ms");
     if (typeof themeTs === "number") {
       console.log("[perf] nav rendered after theme by", (navTs - themeTs).toFixed(2) + "ms");
@@ -359,6 +353,7 @@ export default function AppShell({
             src="https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg"
             width={320}
           />
+
           <button
             aria-expanded={notificationsOpen}
             aria-haspopup="dialog"
@@ -373,8 +368,11 @@ export default function AppShell({
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v2.6c0 .7-.2 1.4-.7 2l-1.5 2.2a1 1 0 0 0 .8 1.5h13.8a1 1 0 0 0 .8-1.5l-1.5-2.2c-.5-.6-.7-1.3-.7-2V9A5.5 5.5 0 0 0 12 3.5Zm0 17.2a2.6 2.6 0 0 0 2.5-2h-5a2.6 2.6 0 0 0 2.5 2Z" />
             </svg>
-            {unreadNotificationsCount > 0 ? <span className="notification-badge">{unreadNotificationsCount}</span> : null}
+            {unreadNotificationsCount > 0 ? (
+              <span className="notification-badge">{unreadNotificationsCount}</span>
+            ) : null}
           </button>
+
           <section
             aria-hidden={!notificationsOpen}
             aria-label="Notifications"
@@ -385,11 +383,13 @@ export default function AppShell({
             <header className="notifications-panel-header">
               <h2>Notifications</h2>
             </header>
+
             {notificationsDebugMessage ? <p className="notifications-error">{notificationsDebugMessage}</p> : null}
             {notificationsLoading ? <p className="notifications-empty">Loading notifications...</p> : null}
             {!notificationsLoading && notifications.length === 0 ? (
               <p className="notifications-empty">No notifications yet.</p>
             ) : null}
+
             {!notificationsLoading && notifications.length > 0 ? (
               <div className="notifications-list">
                 {notifications.map((notification) => (
@@ -414,6 +414,7 @@ export default function AppShell({
                         src={notification.post_image_url ?? PWA_ICON_URL}
                       />
                     )}
+
                     <span className="notification-copy">
                       <span>{getNotificationMessage(notification)}</span>
                       <time dateTime={notification.created_at}>{formatNotificationDate(notification.created_at)}</time>
@@ -432,11 +433,7 @@ export default function AppShell({
         <div className="tab-bar-inner">
           {tabs.map((tab) => (
             <Link
-              className={
-                pathname === tab.href || pathname.startsWith(`${tab.href}/`)
-                  ? "tab-link active"
-                  : "tab-link"
-              }
+              className={pathname === tab.href || pathname.startsWith(`${tab.href}/`) ? "tab-link active" : "tab-link"}
               href={tab.href}
               key={tab.href}
               onClick={(event) => {
