@@ -50,7 +50,8 @@ html {
 
 html,
 body {
-  height: 100%;
+  height: auto;
+  min-height: 100%;
 }
 
 h1 {
@@ -66,7 +67,7 @@ p {
 .page-wrap {
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem calc(var(--tabbar-total-height, 64px) + 0.85rem);
+  padding: 1.25rem 1.25rem var(--tabbar-total-height, 64px);
 }
 
 .page-wrap-no-top-bar {
@@ -75,7 +76,6 @@ p {
 
 .app-shell {
   position: relative;
-  min-height: 100vh;
   min-height: 100dvh;
 }
 
