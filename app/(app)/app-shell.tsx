@@ -176,33 +176,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     [pathname],
   );
 
-  // ---- KEY FIX: keep tab bar anchored during iOS VisualViewport changes (address bar collapse/expand) ----
-  useEffect(() => {
-    const el = tabBarRef.current;
-    if (!el) return;
-
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    const update = () => {
-      // offsetTop changes when Safari collapses/expands bars; transform keeps the fixed bar visually glued
-      const offset = Math.max(0, vv.offsetTop || 0);
-      el.style.transform = `translate3d(0, ${offset}px, 0)`;
-    };
-
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    window.addEventListener("orientationchange", update);
-
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-      window.removeEventListener("orientationchange", update);
-    };
-  }, []);
-  // -----------------------------------------------------------------------------------------------
-
   useEffect(() => {
     let active = true;
 
