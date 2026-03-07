@@ -35,31 +35,22 @@ export default function ProfileView({ username }: ProfileViewProps) {
   const profileCacheKey = username ? `u:${username}` : "self";
   const initialProfileCache = profileCacheByKey.get(profileCacheKey) ?? null;
 
-  const [viewer, setViewer] = useState<User | null>(initialProfileCache?.viewer ?? null);
-  const [profile, setProfile] = useState<ProfileRecord | null>(initialProfileCache?.profile ?? null);
-  const [posts, setPosts] = useState<FeedPost[]>(initialProfileCache?.posts ?? []);
-  const [followersCount, setFollowersCount] = useState(initialProfileCache?.followersCount ?? 0);
-  const [followingCount, setFollowingCount] = useState(initialProfileCache?.followingCount ?? 0);
-  const [isFollowing, setIsFollowing] = useState(initialProfileCache?.isFollowing ?? false);
-  const [hasPendingFollowRequest, setHasPendingFollowRequest] = useState(
-    initialProfileCache?.hasPendingFollowRequest ?? false,
-  );
-  const [isPrivate, setIsPrivate] = useState(initialProfileCache?.isPrivate ?? false);
+  const [viewer, setViewer] = useState<User | null>(null);
+  const [profile, setProfile] = useState<ProfileRecord | null>(null);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [hasPendingFollowRequest, setHasPendingFollowRequest] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState(0);
-  const [loading, setLoading] = useState(hasSupabaseEnv && !initialProfileCache);
+  const [loading, setLoading] = useState(hasSupabaseEnv);
   const [pendingFollowAction, setPendingFollowAction] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
       return;
-    }
-
-    if (initialProfileCache) {
-      const cacheAge = Date.now() - initialProfileCache.cachedAt;
-      if (cacheAge <= PROFILE_CACHE_TTL_MS) {
-        return;
-      }
     }
 
     let mounted = true;
@@ -86,6 +77,25 @@ export default function ProfileView({ username }: ProfileViewProps) {
       }
 
       setViewer(userData.user);
+
+      const cacheAge = initialProfileCache ? Date.now() - initialProfileCache.cachedAt : Number.POSITIVE_INFINITY;
+      const isCacheFresh = cacheAge <= PROFILE_CACHE_TTL_MS;
+      const isCacheForViewer = initialProfileCache?.viewer?.id === userData.user.id;
+      const isCacheForTargetProfile = username
+        ? initialProfileCache?.profile?.username === username
+        : initialProfileCache?.profile?.id === userData.user.id;
+
+      if (initialProfileCache && isCacheFresh && isCacheForViewer && isCacheForTargetProfile) {
+        setProfile(initialProfileCache.profile);
+        setPosts(initialProfileCache.posts);
+        setFollowersCount(initialProfileCache.followersCount);
+        setFollowingCount(initialProfileCache.followingCount);
+        setIsFollowing(initialProfileCache.isFollowing);
+        setHasPendingFollowRequest(initialProfileCache.hasPendingFollowRequest);
+        setIsPrivate(initialProfileCache.isPrivate);
+        setLoading(false);
+        return;
+      }
 
       const resolveProfile = async () => {
         const attempts = [
