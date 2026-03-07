@@ -115,7 +115,8 @@ export default function SearchPage() {
     }
 
     const trimmed = query.trim();
-    if (!trimmed) {
+    const trimmedWithoutAt = trimmed.startsWith("@") ? trimmed.slice(1).trim() : trimmed;
+    if (!trimmedWithoutAt) {
       return;
     }
 
@@ -124,21 +125,28 @@ export default function SearchPage() {
       setLoading(true);
       setError(null);
 
-      const wildcard = `%${trimmed}%`;
+      const wildcard = `%${trimmedWithoutAt}%`;
+      const rawWildcard = `%${trimmed}%`;
       const isMissingColumnError = (message: string, columnName: string) =>
         message.includes(columnName) && (message.includes("column") || message.includes("schema cache"));
       const attemptSearch = async (nameColumns: Array<"full_name" | "name">) => {
+        const usernameFilters =
+          trimmedWithoutAt === trimmed
+            ? [`username.ilike.${wildcard}`]
+            : [`username.ilike.${wildcard}`, `username.ilike.${rawWildcard}`];
+
         if (nameColumns.length === 0) {
           return supabase
             .from("profiles")
             .select("id,username,avatar_url")
-            .ilike("username", wildcard)
+            .or(usernameFilters.join(","))
             .order("username", { ascending: true })
             .limit(SEARCH_LIMIT);
         }
 
         const selectFields = `id,username,avatar_url,${nameColumns.join(",")}`;
-        const filters = ["username", ...nameColumns].map((columnName) => `${columnName}.ilike.${wildcard}`).join(",");
+        const nameFilters = nameColumns.map((columnName) => `${columnName}.ilike.${wildcard}`);
+        const filters = [...usernameFilters, ...nameFilters].join(",");
         return supabase
           .from("profiles")
           .select(selectFields)

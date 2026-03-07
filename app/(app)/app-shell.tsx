@@ -54,6 +54,17 @@ function isModifiedEvent(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: 
   return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 }
 
+function isTextInputElement(element: Element | null) {
+  if (!element || !(element instanceof HTMLElement)) return false;
+  if (element.isContentEditable) return true;
+  if (element instanceof HTMLTextAreaElement) return true;
+  if (element instanceof HTMLInputElement) {
+    const blockedTypes = new Set(["button", "checkbox", "file", "hidden", "image", "radio", "range", "reset", "submit"]);
+    return !blockedTypes.has(element.type);
+  }
+  return false;
+}
+
 function formatNotificationDate(isoDate: string) {
   return new Date(isoDate).toLocaleString(undefined, {
     dateStyle: "short",
@@ -106,6 +117,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const [pendingFollowRequestActorIds, setPendingFollowRequestActorIds] = useState<Set<string>>(new Set());
 
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [hasHomeInitialFeedLoaded, setHasHomeInitialFeedLoaded] = useState(homeInitialFeedReadyOnWindow);
@@ -120,6 +132,12 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
   const showHomeStartupSplash = isHomeFeed && !hasHomeInitialFeedLoaded;
+
+  const dismissSoftKeyboard = useCallback(() => {
+    const activeElement = document.activeElement;
+    if (!isTextInputElement(activeElement)) return;
+    (activeElement as HTMLElement).blur();
+  }, []);
 
   const loadPendingFollowRequests = useCallback(
     async (items: NotificationItem[]) => {
@@ -296,9 +314,10 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       if (href === pathname) return;
 
       event.preventDefault();
+      dismissSoftKeyboard();
       router.push(href);
     },
-    [pathname, router],
+    [dismissSoftKeyboard, pathname, router],
   );
 
   const handleTabTouchStart = useCallback(
@@ -307,9 +326,10 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       if (href === pathname) return;
 
       event.preventDefault();
+      dismissSoftKeyboard();
       router.push(href);
     },
-    [pathname, router],
+    [dismissSoftKeyboard, pathname, router],
   );
 
   useEffect(() => {
@@ -389,6 +409,55 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       window.removeEventListener("keydown", handleEscape);
     };
   }, [notificationsOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const evaluateKeyboardState = () => {
+      const activeElement = document.activeElement;
+      const focusedTextInput = isTextInputElement(activeElement);
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const heightDelta = window.innerHeight - viewportHeight;
+      const viewportShift = window.visualViewport?.offsetTop ?? 0;
+      const keyboardOpen = focusedTextInput && (heightDelta > 120 || viewportShift > 0);
+      setIsKeyboardOpen(keyboardOpen);
+    };
+
+    const onFocusIn = () => {
+      evaluateKeyboardState();
+    };
+
+    const onFocusOut = () => {
+      window.requestAnimationFrame(evaluateKeyboardState);
+    };
+
+    evaluateKeyboardState();
+    window.addEventListener("focusin", onFocusIn);
+    window.addEventListener("focusout", onFocusOut);
+    window.addEventListener("resize", evaluateKeyboardState);
+    window.addEventListener("orientationchange", evaluateKeyboardState);
+    window.visualViewport?.addEventListener("resize", evaluateKeyboardState);
+    window.visualViewport?.addEventListener("scroll", evaluateKeyboardState);
+
+    return () => {
+      window.removeEventListener("focusin", onFocusIn);
+      window.removeEventListener("focusout", onFocusOut);
+      window.removeEventListener("resize", evaluateKeyboardState);
+      window.removeEventListener("orientationchange", evaluateKeyboardState);
+      window.visualViewport?.removeEventListener("resize", evaluateKeyboardState);
+      window.visualViewport?.removeEventListener("scroll", evaluateKeyboardState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setIsKeyboardOpen(false);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [pathname]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -590,7 +659,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       ) : null}
 
       {!showHomeStartupSplash ? (
-        <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
+        <nav aria-label="Primary" className={`tab-bar ${isKeyboardOpen ? "is-keyboard-open" : ""}`} ref={tabBarRef}>
           <div className="tab-bar-inner">
             {tabs.map((tab) => (
               <Link
