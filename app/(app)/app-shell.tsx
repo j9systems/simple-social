@@ -12,6 +12,8 @@ import type { NotificationItem } from "@/lib/types";
 
 const PWA_ICON_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301c";
+const WORDMARK_URL =
+  "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg";
 
 const tabs = [
   {
@@ -340,7 +342,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
             className={useHomeBrandTreatment ? "brand-logo brand-logo-home" : "brand-logo"}
             height={64}
             priority
-            src="https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg"
+            src={WORDMARK_URL}
             width={320}
           />
 
@@ -431,7 +433,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
             className="app-startup-wordmark"
             height={180}
             priority
-            src="/logo-simple-social.svg"
+            src={WORDMARK_URL}
             width={720}
           />
           <span className="visually-hidden">Loading home feed...</span>
