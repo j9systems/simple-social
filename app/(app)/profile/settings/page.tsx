@@ -288,8 +288,11 @@ export default function SettingsPage() {
         .select("id,username,avatar_url")
         .maybeSingle();
       updateError = fallbackUpdateResponse.error;
-      updatedProfile = fallbackUpdateResponse.data
-        ? { ...fallbackUpdateResponse.data, full_name: nextFullName }
+      const fallbackProfileRow = fallbackUpdateResponse.data as
+        | { id: string; username: string | null; avatar_url: string | null; full_name?: string | null }
+        | null;
+      updatedProfile = fallbackProfileRow
+        ? { ...fallbackProfileRow, full_name: nextFullName }
         : null;
     } else if (primaryUpdateResponse.error && isMissingColumnError(primaryUpdateResponse.error, "is_private")) {
       setSupportsPrivateColumn(false);
@@ -304,8 +307,11 @@ export default function SettingsPage() {
         .select(supportsFullNameColumn ? "id,username,avatar_url,full_name" : "id,username,avatar_url")
         .maybeSingle();
       updateError = fallbackUpdateResponse.error;
-      updatedProfile = fallbackUpdateResponse.data
-        ? { ...fallbackUpdateResponse.data, full_name: fallbackUpdateResponse.data.full_name ?? nextFullName }
+      const fallbackProfileRow = fallbackUpdateResponse.data as
+        | { id: string; username: string | null; avatar_url: string | null; full_name?: string | null }
+        | null;
+      updatedProfile = fallbackProfileRow
+        ? { ...fallbackProfileRow, full_name: fallbackProfileRow.full_name ?? nextFullName }
         : null;
     }
 
