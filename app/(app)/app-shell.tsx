@@ -140,7 +140,8 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       const { data, error } = await supabase
         .from("follow_requests")
         .select("requester_id")
-        .eq("requestee_id", viewer.id)
+        .eq("target_id", viewer.id)
+        .eq("status", "pending")
         .in("requester_id", actorIds);
 
       if (error) {
@@ -239,14 +240,20 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       return;
     }
 
-    const { error: deleteError } = await supabase
+    const nowIso = new Date().toISOString();
+    const { error: updateError } = await supabase
       .from("follow_requests")
-      .delete()
+      .update({
+        status: "accepted",
+        responded_at: nowIso,
+        updated_at: nowIso,
+      })
       .eq("requester_id", requesterId)
-      .eq("requestee_id", viewer.id);
+      .eq("target_id", viewer.id)
+      .eq("status", "pending");
 
-    if (deleteError && !isMissingTableError(deleteError, "follow_requests")) {
-      setNotificationsDebugMessage(`Follow request accepted, but cleanup failed: ${deleteError.message}`);
+    if (updateError && !isMissingTableError(updateError, "follow_requests")) {
+      setNotificationsDebugMessage(`Follow request accepted, but cleanup failed: ${updateError.message}`);
     }
 
     if (!notification.id.startsWith("follow_request:")) {

@@ -35,7 +35,8 @@ type PostRow = {
 
 type FollowRequestRow = {
   requester_id: string | null;
-  requestee_id: string | null;
+  target_id: string | null;
+  status: "pending" | "accepted" | "declined" | "canceled" | null;
   created_at: string;
 };
 
@@ -92,8 +93,9 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
 
   const followRequestsResponse = await supabase
     .from("follow_requests")
-    .select("requester_id,requestee_id,created_at")
-    .eq("requestee_id", recipientUserId);
+    .select("requester_id,target_id,status,created_at")
+    .eq("target_id", recipientUserId)
+    .eq("status", "pending");
 
   if (followRequestsResponse.error && !isMissingTableError(followRequestsResponse.error, "follow_requests")) {
     const message = `Follow request lookup failed: ${followRequestsResponse.error.message}`;
@@ -102,8 +104,8 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
   }
 
   const followRequests = ((followRequestsResponse.data as FollowRequestRow[] | null) ?? []).filter(
-    (row): row is FollowRequestRow & { requester_id: string; requestee_id: string } =>
-      Boolean(row.requester_id) && Boolean(row.requestee_id),
+    (row): row is FollowRequestRow & { requester_id: string; target_id: string; status: "pending" } =>
+      Boolean(row.requester_id) && Boolean(row.target_id) && row.status === "pending",
   );
   const existingFollowRequestKeys = new Set(
     rows
@@ -173,13 +175,13 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
   });
 
   const followRequestItems = followRequests
-    .filter((request) => !existingFollowRequestKeys.has(`${request.requester_id}:${request.requestee_id}`))
+    .filter((request) => !existingFollowRequestKeys.has(`${request.requester_id}:${request.target_id}`))
     .map((request) => {
       const actorProfile = profileById.get(request.requester_id);
       return {
-        id: `follow_request:${request.requester_id}:${request.requestee_id}`,
+        id: `follow_request:${request.requester_id}:${request.target_id}`,
         type: "follow_request" as NotificationType,
-        recipient_profile_id: request.requestee_id,
+        recipient_profile_id: request.target_id,
         actor_profile_id: request.requester_id,
         actor_username: actorProfile?.username ?? null,
         actor_avatar_url: actorProfile?.avatar_url ?? null,

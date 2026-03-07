@@ -166,7 +166,8 @@ export default function ProfileView({ username }: ProfileViewProps) {
               .from("follow_requests")
               .select("requester_id")
               .eq("requester_id", userData.user.id)
-              .eq("requestee_id", nextProfile.id)
+              .eq("target_id", nextProfile.id)
+              .eq("status", "pending")
               .maybeSingle(),
       ]);
 
@@ -347,12 +348,43 @@ export default function ProfileView({ username }: ProfileViewProps) {
     }
 
     if (isPrivate) {
+      if (hasPendingFollowRequest) {
+        const nowIso = new Date().toISOString();
+        const { error: cancelError } = await supabase
+          .from("follow_requests")
+          .update({
+            status: "canceled",
+            responded_at: nowIso,
+            updated_at: nowIso,
+          })
+          .eq("requester_id", viewer.id)
+          .eq("target_id", profile.id)
+          .eq("status", "pending");
+
+        if (cancelError) {
+          if (isMissingTableError(cancelError, "follow_requests")) {
+            setError("Follow requests are unavailable. Please run the latest database migration.");
+          } else {
+            setError(cancelError.message);
+          }
+        } else {
+          setHasPendingFollowRequest(false);
+        }
+
+        setPendingFollowAction(false);
+        return;
+      }
+
+      const nowIso = new Date().toISOString();
       const { error: requestError } = await supabase.from("follow_requests").upsert(
         {
           requester_id: viewer.id,
-          requestee_id: profile.id,
+          target_id: profile.id,
+          status: "pending",
+          responded_at: null,
+          updated_at: nowIso,
         },
-        { onConflict: "requester_id,requestee_id" },
+        { onConflict: "requester_id,target_id" },
       );
 
       if (requestError) {
@@ -374,10 +406,13 @@ export default function ProfileView({ username }: ProfileViewProps) {
       return;
     }
 
-    const { error: followError } = await supabase.from("follows").insert({
-      follower_id: viewer.id,
-      following_id: profile.id,
-    });
+    const { error: followError } = await supabase.from("follows").upsert(
+      {
+        follower_id: viewer.id,
+        following_id: profile.id,
+      },
+      { onConflict: "follower_id,following_id" },
+    );
 
     if (followError) {
       setError(followError.message);
@@ -458,8 +493,8 @@ export default function ProfileView({ username }: ProfileViewProps) {
       {!isOwnProfile && profile ? (
         <div className="profile-actions">
           <button
-            className={isFollowing ? "secondary-button" : "primary-button"}
-            disabled={hasPendingFollowRequest && !isFollowing}
+            className={isFollowing || hasPendingFollowRequest ? "secondary-button" : "primary-button"}
+            disabled={pendingFollowAction}
             onClick={toggleFollow}
             type="button"
           >
