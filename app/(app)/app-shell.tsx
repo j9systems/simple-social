@@ -15,6 +15,8 @@ const PWA_ICON_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772878441/simpleSocial_Logo_s9xbr8.png";
 const WORDMARK_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg";
+const VIEWPORT_BOTTOM_CSS_VAR = "--vv-bottom";
+const KEYBOARD_LIFT_MIN_PX = 80;
 
 const tabs = [
   {
@@ -63,6 +65,14 @@ function isTextInputElement(element: Element | null) {
     return !blockedTypes.has(element.type);
   }
   return false;
+}
+
+function getVisualViewportBottomInset() {
+  if (typeof window === "undefined" || !window.visualViewport) return 0;
+  const viewport = window.visualViewport;
+  const inset = window.innerHeight - (viewport.height + viewport.offsetTop);
+  if (!Number.isFinite(inset)) return 0;
+  return Math.max(0, Math.round(inset));
 }
 
 function formatNotificationDate(isoDate: string) {
@@ -124,6 +134,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
   const tabBarRef = useRef<HTMLElement | null>(null);
+  const keyboardResetTimerRef = useRef<number | null>(null);
 
   const lastScrollYRef = useRef(0);
   const navMountLoggedRef = useRef(false);
@@ -131,12 +142,48 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
   const showHomeStartupSplash = isHomeFeed && !hasHomeInitialFeedLoaded;
+  const isSearchRoute = pathname === "/search";
+
+  const setViewportBottomInset = useCallback((value: number) => {
+    const root = document.documentElement;
+    const next = `${Math.max(0, Math.round(value))}px`;
+    if (root.style.getPropertyValue(VIEWPORT_BOTTOM_CSS_VAR) === next) {
+      return;
+    }
+    root.style.setProperty(VIEWPORT_BOTTOM_CSS_VAR, next);
+  }, []);
+
+  const resetViewportBottomInset = useCallback(() => {
+    setViewportBottomInset(0);
+  }, [setViewportBottomInset]);
+
+  const syncViewportBottomInset = useCallback(() => {
+    if (document.hidden || !isSearchRoute) {
+      resetViewportBottomInset();
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (!isTextInputElement(activeElement)) {
+      resetViewportBottomInset();
+      return;
+    }
+
+    const nextInset = getVisualViewportBottomInset();
+    if (nextInset < KEYBOARD_LIFT_MIN_PX) {
+      resetViewportBottomInset();
+      return;
+    }
+
+    setViewportBottomInset(nextInset);
+  }, [isSearchRoute, resetViewportBottomInset, setViewportBottomInset]);
 
   const dismissSoftKeyboard = useCallback(() => {
     const activeElement = document.activeElement;
     if (!isTextInputElement(activeElement)) return;
     (activeElement as HTMLElement).blur();
-  }, []);
+    resetViewportBottomInset();
+  }, [resetViewportBottomInset]);
 
   const loadPendingFollowRequests = useCallback(
     async (items: NotificationItem[]) => {
@@ -412,6 +459,85 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   useEffect(() => {
     dismissSoftKeyboard();
   }, [dismissSoftKeyboard, pathname]);
+
+  useEffect(() => {
+    const syncOnNextFrame = () => {
+      window.requestAnimationFrame(() => {
+        syncViewportBottomInset();
+      });
+    };
+
+    const handleFocusIn = () => {
+      syncOnNextFrame();
+      if (keyboardResetTimerRef.current !== null) {
+        window.clearTimeout(keyboardResetTimerRef.current);
+        keyboardResetTimerRef.current = null;
+      }
+    };
+
+    const handleFocusOut = () => {
+      syncOnNextFrame();
+      if (keyboardResetTimerRef.current !== null) {
+        window.clearTimeout(keyboardResetTimerRef.current);
+      }
+      keyboardResetTimerRef.current = window.setTimeout(() => {
+        syncViewportBottomInset();
+      }, 160);
+    };
+
+    const handleViewportUpdate = () => {
+      syncOnNextFrame();
+    };
+
+    const handleVisibilityOrBlur = () => {
+      if (document.hidden) {
+        resetViewportBottomInset();
+        return;
+      }
+      syncViewportBottomInset();
+    };
+
+    document.addEventListener("focusin", handleFocusIn, true);
+    document.addEventListener("focusout", handleFocusOut, true);
+    document.addEventListener("visibilitychange", handleVisibilityOrBlur);
+    window.addEventListener("blur", handleVisibilityOrBlur);
+    window.addEventListener("resize", handleViewportUpdate, { passive: true });
+    window.addEventListener("pageshow", handleVisibilityOrBlur);
+    window.addEventListener("pagehide", handleVisibilityOrBlur);
+
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", handleViewportUpdate);
+    visualViewport?.addEventListener("scroll", handleViewportUpdate);
+
+    syncViewportBottomInset();
+
+    return () => {
+      if (keyboardResetTimerRef.current !== null) {
+        window.clearTimeout(keyboardResetTimerRef.current);
+        keyboardResetTimerRef.current = null;
+      }
+      document.removeEventListener("focusin", handleFocusIn, true);
+      document.removeEventListener("focusout", handleFocusOut, true);
+      document.removeEventListener("visibilitychange", handleVisibilityOrBlur);
+      window.removeEventListener("blur", handleVisibilityOrBlur);
+      window.removeEventListener("resize", handleViewportUpdate);
+      window.removeEventListener("pageshow", handleVisibilityOrBlur);
+      window.removeEventListener("pagehide", handleVisibilityOrBlur);
+      visualViewport?.removeEventListener("resize", handleViewportUpdate);
+      visualViewport?.removeEventListener("scroll", handleViewportUpdate);
+      resetViewportBottomInset();
+    };
+  }, [resetViewportBottomInset, syncViewportBottomInset]);
+
+  useEffect(() => {
+    resetViewportBottomInset();
+    const frame = window.requestAnimationFrame(() => {
+      syncViewportBottomInset();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [pathname, resetViewportBottomInset, syncViewportBottomInset]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {

@@ -204,9 +204,7 @@ export default function SearchPage() {
         if (!response.error) {
           const needle = trimmedWithoutAt || trimmed;
           setProfiles(
-            ((response.data as SearchProfile[]) ?? []).filter(
-              (profile) => Boolean(profile.username) && profileMatchesQuery(profile, viewerContext, needle),
-            ),
+            ((response.data as SearchProfile[]) ?? []).filter((profile) => profileMatchesQuery(profile, viewerContext, needle)),
           );
           setLoading(false);
           return;
@@ -282,24 +280,35 @@ export default function SearchPage() {
       {profiles.length > 0 ? (
         <ul className="search-results">
           {profiles.map((profile) => {
-            if (!profile.username) {
-              return null;
-            }
-
             const displayName = buildDisplayName(profile, viewerContext);
+            const hasUsername = Boolean(profile.username);
             return (
               <li key={profile.id}>
-                <Link className="search-result-link" href={`/u/${profile.username}`}>
-                  <img
-                    alt={`${displayName} avatar`}
-                    className="avatar"
-                    src={buildAvatarSrc(profile.avatar_url, avatarVersion)}
-                  />
-                  <span className="search-result-copy">
-                    <strong>{displayName}</strong>
-                    <span>@{profile.username}</span>
-                  </span>
-                </Link>
+                {hasUsername ? (
+                  <Link className="search-result-link" href={`/u/${profile.username}`}>
+                    <img
+                      alt={`${displayName} avatar`}
+                      className="avatar"
+                      src={buildAvatarSrc(profile.avatar_url, avatarVersion)}
+                    />
+                    <span className="search-result-copy">
+                      <strong>{displayName}</strong>
+                      <span>@{profile.username}</span>
+                    </span>
+                  </Link>
+                ) : (
+                  <div className="search-result-link" role="group">
+                    <img
+                      alt={`${displayName} avatar`}
+                      className="avatar"
+                      src={buildAvatarSrc(profile.avatar_url, avatarVersion)}
+                    />
+                    <span className="search-result-copy">
+                      <strong>{displayName}</strong>
+                      <span>No username set</span>
+                    </span>
+                  </div>
+                )}
               </li>
             );
           })}

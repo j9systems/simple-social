@@ -12,6 +12,7 @@
   --tabbar-bg: #ffffff;
   --tabbar-height: 77px;
   --tabbar-total-height: var(--tabbar-height, 64px);
+  --vv-bottom: 0px;
   --feed-divider: color-mix(in srgb, var(--line) 36%, var(--background));
   scroll-padding-top: calc(var(--tabbar-height, 64px) + env(safe-area-inset-top));
 }
@@ -294,7 +295,7 @@ p {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--vv-bottom, 0px);
 
   /* Visuals */
   border-top: 1px solid var(--line);
@@ -333,11 +334,11 @@ p {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.22rem;
+  gap: 0.18rem;
   text-decoration: none;
   text-align: center;
   color: var(--muted);
-  padding: 0.18rem 0.45rem 0.86rem;
+  padding: 0.12rem 0.45rem 0.7rem;
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.1;
@@ -368,12 +369,12 @@ p {
 .tab-icon {
   width: 1.45rem;
   height: 1.45rem;
-  transform: translateY(-4px);
+  transform: translateY(-6px);
   transition: transform 180ms ease;
 }
 
 .tab-label {
-  transform: translateY(-4px);
+  transform: translateY(-6px);
   transition: transform 180ms ease;
 }
 
@@ -404,11 +405,11 @@ p {
 
 .tab-link.active .tab-icon {
   color: var(--tab-active-icon);
-  transform: translateY(-8px);
+  transform: translateY(-9px);
 }
 
 .tab-link.active .tab-label {
-  transform: translateY(-8px);
+  transform: translateY(-9px);
 }
 
 .card {
