@@ -86,6 +86,24 @@ p {
   flex-direction: column;
 }
 
+.page-wrap.is-hidden-for-startup-splash {
+  display: none;
+}
+
+.app-startup-splash {
+  min-height: 100svh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: var(--background);
+  padding: 1.25rem;
+}
+
+.app-startup-wordmark {
+  width: min(220px, 70vw);
+  height: auto;
+}
+
 .top-bar {
   position: sticky;
   top: 0;

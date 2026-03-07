@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { TouchEvent } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
-import { HOME_TAB_RESELECT_EVENT } from "@/lib/events";
+import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT } from "@/lib/events";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedComment, FeedPost } from "@/lib/types";
 
@@ -170,6 +170,7 @@ export default function HomePage() {
   const pullActiveRef = useRef(false);
   const pullDistanceRef = useRef(0);
   const refreshStartedAtRef = useRef<number | null>(null);
+  const hasCompletedInitialFeedLoadRef = useRef(false);
 
   const triggerFeedRefresh = useCallback((holdDistance: number = PULL_TRIGGER_DISTANCE) => {
     if (isRefreshingFeed) {
@@ -816,6 +817,11 @@ export default function HomePage() {
       }
 
       setLoading(false);
+      if (!hasCompletedInitialFeedLoadRef.current) {
+        hasCompletedInitialFeedLoadRef.current = true;
+        (window as Window & { __ssHomeInitialFeedReady?: boolean }).__ssHomeInitialFeedReady = true;
+        window.dispatchEvent(new Event(HOME_INITIAL_FEED_READY_EVENT));
+      }
     };
 
     loadFeed();

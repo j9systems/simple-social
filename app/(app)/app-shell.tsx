@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
-import { HOME_TAB_RESELECT_EVENT } from "@/lib/events";
+import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT } from "@/lib/events";
 import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
 import { supabase } from "@/lib/supabase";
 import type { NotificationItem } from "@/lib/types";
@@ -86,6 +86,9 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const isHomeFeed = pathname === "/";
   const isProfilePage = pathname === "/profile";
   const useHomeBrandTreatment = pathname === "/" || pathname === "/search" || pathname === "/upload";
+  const homeInitialFeedReadyOnWindow =
+    typeof window !== "undefined" &&
+    (window as Window & { __ssHomeInitialFeedReady?: boolean }).__ssHomeInitialFeedReady === true;
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -95,6 +98,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
   const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
+  const [hasHomeInitialFeedLoaded, setHasHomeInitialFeedLoaded] = useState(homeInitialFeedReadyOnWindow);
 
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -105,6 +109,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const firstPaintLoggedRef = useRef(false);
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
+  const showHomeStartupSplash = isHomeFeed && !hasHomeInitialFeedLoaded;
 
   const loadNotifications = useCallback(
     async (showLoading = true) => {
@@ -206,7 +211,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       if (!active) return;
 
       const metadata = viewer.metadata ?? {};
-      const metadataAvatarUrl = typeof (metadata as any).avatar_url === "string" ? ((metadata as any).avatar_url as string) : null;
+      const metadataAvatarUrl = typeof metadata.avatar_url === "string" ? metadata.avatar_url : null;
       setViewerTabAvatarUrl((profileData?.avatar_url as string | null) ?? metadataAvatarUrl);
     };
 
@@ -257,6 +262,18 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       window.cancelAnimationFrame(frame);
     };
   }, [pathname]);
+
+  useEffect(() => {
+    const onInitialFeedReady = () => {
+      setHasHomeInitialFeedLoaded(true);
+    };
+
+    window.addEventListener(HOME_INITIAL_FEED_READY_EVENT, onInitialFeedReady);
+
+    return () => {
+      window.removeEventListener(HOME_INITIAL_FEED_READY_EVENT, onInitialFeedReady);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isHomeFeed) return;
@@ -316,7 +333,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   return (
     <div className="app-shell">
-      {!isProfilePage ? (
+      {!isProfilePage && !showHomeStartupSplash ? (
         <header className={`top-bar ${isHomeFeed && isTopBarHidden ? "is-hidden-on-scroll" : ""}`}>
           <Image
             alt="Simple Social"
@@ -400,35 +417,56 @@ export default function AppShell({ children, viewer }: AppShellProps) {
         </header>
       ) : null}
 
-      <main className={isProfilePage ? "page-wrap page-wrap-no-top-bar" : "page-wrap"}>{children}</main>
+      <main
+        aria-hidden={showHomeStartupSplash}
+        className={`${isProfilePage ? "page-wrap page-wrap-no-top-bar" : "page-wrap"} ${showHomeStartupSplash ? "is-hidden-for-startup-splash" : ""}`}
+      >
+        {children}
+      </main>
 
-      <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
-        <div className="tab-bar-inner">
-          {tabs.map((tab) => (
-            <Link
-              className={pathname === tab.href || pathname.startsWith(`${tab.href}/`) ? "tab-link active" : "tab-link"}
-              href={tab.href}
-              key={tab.href}
-              onClick={(event) => {
-                handleTabClick(event, tab.href);
-              }}
-            >
-              <span className="tab-icon">
-                {tab.href === "/profile" ? (
-                  <img
-                    alt="Your profile"
-                    className="tab-profile-avatar"
-                    src={buildAvatarSrc(viewerTabAvatarUrl, avatarVersion)}
-                  />
-                ) : (
-                  tab.icon
-                )}
-              </span>
-              <span className="tab-label">{tab.label}</span>
-            </Link>
-          ))}
+      {showHomeStartupSplash ? (
+        <div aria-live="polite" className="app-startup-splash" role="status">
+          <Image
+            alt="Simple Social"
+            className="app-startup-wordmark"
+            height={180}
+            priority
+            src="/logo-simple-social.svg"
+            width={720}
+          />
+          <span className="visually-hidden">Loading home feed...</span>
         </div>
-      </nav>
+      ) : null}
+
+      {!showHomeStartupSplash ? (
+        <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
+          <div className="tab-bar-inner">
+            {tabs.map((tab) => (
+              <Link
+                className={pathname === tab.href || pathname.startsWith(`${tab.href}/`) ? "tab-link active" : "tab-link"}
+                href={tab.href}
+                key={tab.href}
+                onClick={(event) => {
+                  handleTabClick(event, tab.href);
+                }}
+              >
+                <span className="tab-icon">
+                  {tab.href === "/profile" ? (
+                    <img
+                      alt="Your profile"
+                      className="tab-profile-avatar"
+                      src={buildAvatarSrc(viewerTabAvatarUrl, avatarVersion)}
+                    />
+                  ) : (
+                    tab.icon
+                  )}
+                </span>
+                <span className="tab-label">{tab.label}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+      ) : null}
     </div>
   );
 }
