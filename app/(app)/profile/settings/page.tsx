@@ -293,7 +293,8 @@ export default function SettingsPage() {
     setInitialUsername(nextUsername);
     setUsernameStatus("idle");
     setSaving(false);
-    setMessage("Profile updated.");
+    router.push("/profile");
+    router.refresh();
   };
 
   const displayedAvatarUrl = avatarPreviewUrl

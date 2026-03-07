@@ -7,6 +7,7 @@
   --muted: #6b665d;
   --line: #dad4ca;
   --accent: #0d77d9;
+  --deep-purple: #4a148c;
   --tab-active-icon: #5f259f;
   --tabbar-bg: #ffffff;
   --tabbar-height: 64px;
@@ -538,7 +539,7 @@ button {
   height: 2.2rem;
   border-radius: 999px;
   border: 3px solid color-mix(in srgb, var(--line) 88%, #fff);
-  border-top-color: var(--accent);
+  border-top-color: var(--deep-purple);
   animation: spin 0.8s linear infinite;
 }
 
@@ -592,7 +593,7 @@ button {
   border: 2px solid color-mix(in srgb, var(--line) 86%, #fff);
   background:
     radial-gradient(circle at center, color-mix(in srgb, var(--surface) 96%, #fff) 57%, transparent 58%),
-    conic-gradient(var(--accent) calc(var(--pull-progress) * 1turn), transparent 0);
+    conic-gradient(var(--deep-purple) calc(var(--pull-progress) * 1turn), transparent 0);
 }
 
 .pull-refresh-ring.is-refreshing {
@@ -1220,6 +1221,11 @@ button {
 .settings-form .primary-button,
 .settings-form .secondary-button {
   width: 100%;
+}
+
+.upload-form .primary-button,
+.settings-form .primary-button {
+  background: var(--deep-purple);
 }
 
 .settings-theme-row {
