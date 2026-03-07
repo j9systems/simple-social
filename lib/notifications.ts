@@ -158,6 +158,7 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
   const items = rows.map((row) => {
     const actorProfile = row.actor_profile_id ? profileById.get(row.actor_profile_id) : null;
     const post = row.post_id ? postById.get(row.post_id) : null;
+    const resolvedReadAt = row.read_at ?? (row.is_read ? row.created_at : null);
 
     return {
       id: row.id,
@@ -170,7 +171,7 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
       post_image_url: post?.image_url ?? null,
       comment_id: row.comment_id ?? null,
       created_at: row.created_at,
-      read_at: row.read_at ?? null,
+      read_at: resolvedReadAt,
     };
   });
 
@@ -203,9 +204,10 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
 }
 
 export async function markNotificationAsRead(notificationId: string, recipientUserId: string) {
+  const nowIso = new Date().toISOString();
   const response = await supabase
     .from("notifications")
-    .update({ is_read: true })
+    .update({ is_read: true, read_at: nowIso })
     .eq("id", notificationId)
     .eq("recipient_profile_id", recipientUserId);
 

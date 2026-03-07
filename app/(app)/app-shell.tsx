@@ -105,7 +105,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   const isHomeFeed = pathname === "/";
   const isProfilePage = pathname === "/profile";
-  const isSearchPage = pathname === "/search";
   const useHomeBrandTreatment = pathname === "/" || pathname === "/search" || pathname === "/upload";
   const homeInitialFeedReadyOnWindow =
     typeof window !== "undefined" &&
@@ -118,7 +117,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const [pendingFollowRequestActorIds, setPendingFollowRequestActorIds] = useState<Set<string>>(new Set());
 
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [hasHomeInitialFeedLoaded, setHasHomeInitialFeedLoaded] = useState(homeInitialFeedReadyOnWindow);
@@ -316,7 +314,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
       event.preventDefault();
       dismissSoftKeyboard();
-      setIsKeyboardOpen(false);
       router.push(href);
     },
     [dismissSoftKeyboard, pathname, router],
@@ -329,7 +326,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
       event.preventDefault();
       dismissSoftKeyboard();
-      setIsKeyboardOpen(false);
       router.push(href);
     },
     [dismissSoftKeyboard, pathname, router],
@@ -414,62 +410,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   }, [notificationsOpen]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const evaluateKeyboardState = () => {
-      if (pathname !== "/search") {
-        setIsKeyboardOpen(false);
-        return;
-      }
-
-      const activeElement = document.activeElement;
-      const focusedTextInput = isTextInputElement(activeElement);
-      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-      const heightDelta = window.innerHeight - viewportHeight;
-      const viewportShift = window.visualViewport?.offsetTop ?? 0;
-      const keyboardOpen = focusedTextInput && (heightDelta > 120 || viewportShift > 0);
-      setIsKeyboardOpen(keyboardOpen);
-    };
-
-    const onFocusIn = () => {
-      evaluateKeyboardState();
-    };
-
-    const onFocusOut = () => {
-      window.requestAnimationFrame(evaluateKeyboardState);
-    };
-
-    evaluateKeyboardState();
-    window.addEventListener("focusin", onFocusIn);
-    window.addEventListener("focusout", onFocusOut);
-    window.addEventListener("resize", evaluateKeyboardState);
-    window.addEventListener("orientationchange", evaluateKeyboardState);
-    window.visualViewport?.addEventListener("resize", evaluateKeyboardState);
-    window.visualViewport?.addEventListener("scroll", evaluateKeyboardState);
-
-    return () => {
-      window.removeEventListener("focusin", onFocusIn);
-      window.removeEventListener("focusout", onFocusOut);
-      window.removeEventListener("resize", evaluateKeyboardState);
-      window.removeEventListener("orientationchange", evaluateKeyboardState);
-      window.visualViewport?.removeEventListener("resize", evaluateKeyboardState);
-      window.visualViewport?.removeEventListener("scroll", evaluateKeyboardState);
-    };
-  }, [pathname]);
-
-  useEffect(() => {
     dismissSoftKeyboard();
-    const frame = window.requestAnimationFrame(() => {
-      setIsKeyboardOpen(false);
-    });
-    const resetTimer = window.setTimeout(() => {
-      setIsKeyboardOpen(false);
-    }, 140);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(resetTimer);
-    };
   }, [dismissSoftKeyboard, pathname]);
 
   useEffect(() => {
@@ -672,7 +613,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       ) : null}
 
       {!showHomeStartupSplash ? (
-        <nav aria-label="Primary" className={`tab-bar ${isSearchPage && isKeyboardOpen ? "is-keyboard-open" : ""}`} ref={tabBarRef}>
+        <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
           <div className="tab-bar-inner">
             {tabs.map((tab) => (
               <Link

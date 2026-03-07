@@ -11,6 +11,7 @@ const SEARCH_LIMIT = 30;
 type SearchProfile = ProfileRecord & {
   full_name?: string | null;
   name?: string | null;
+  display_name?: string | null;
 };
 
 type ViewerContext = {
@@ -21,23 +22,18 @@ type ViewerContext = {
 };
 
 function normalizeSearchTerm(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function profileMatchesQuery(profile: SearchProfile, query: string) {
-  const needle = normalizeSearchTerm(query);
-  if (!needle) return true;
-
-  const username = normalizeSearchTerm(profile.username ?? "");
-  const fullName = normalizeSearchTerm(profile.full_name ?? "");
-  const name = normalizeSearchTerm(profile.name ?? "");
-  return username.includes(needle) || fullName.includes(needle) || name.includes(needle);
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 function buildDisplayName(profile: SearchProfile, viewer: ViewerContext) {
   const fullName = profile.full_name?.trim();
   if (fullName) {
     return fullName;
+  }
+
+  const displayName = profile.display_name?.trim();
+  if (displayName) {
+    return displayName;
   }
 
   const name = profile.name?.trim();
@@ -63,6 +59,24 @@ function buildDisplayName(profile: SearchProfile, viewer: ViewerContext) {
   }
 
   return "User";
+}
+
+function profileMatchesQuery(profile: SearchProfile, viewer: ViewerContext, query: string) {
+  const needle = normalizeSearchTerm(query);
+  if (!needle) return true;
+
+  const username = normalizeSearchTerm(profile.username ?? "");
+  const displayName = normalizeSearchTerm(buildDisplayName(profile, viewer));
+  const fullName = normalizeSearchTerm(profile.full_name ?? "");
+  const profileDisplayName = normalizeSearchTerm(profile.display_name ?? "");
+  const name = normalizeSearchTerm(profile.name ?? "");
+  return (
+    username.includes(needle) ||
+    displayName.includes(needle) ||
+    fullName.includes(needle) ||
+    profileDisplayName.includes(needle) ||
+    name.includes(needle)
+  );
 }
 
 export default function SearchPage() {
@@ -143,7 +157,7 @@ export default function SearchPage() {
       const rawWildcard = `%${trimmed}%`;
       const isMissingColumnError = (message: string, columnName: string) =>
         message.includes(columnName) && (message.includes("column") || message.includes("schema cache"));
-      const attemptSearch = async (nameColumns: Array<"full_name" | "name">) => {
+      const attemptSearch = async (nameColumns: Array<"full_name" | "name" | "display_name">) => {
         const usernameFilters =
           trimmedWithoutAt === trimmed
             ? [`username.ilike.${wildcard}`]
@@ -169,7 +183,16 @@ export default function SearchPage() {
           .limit(SEARCH_LIMIT);
       };
 
-      const attempts: Array<Array<"full_name" | "name">> = [["full_name", "name"], ["full_name"], ["name"], []];
+      const attempts: Array<Array<"full_name" | "name" | "display_name">> = [
+        ["full_name", "name", "display_name"],
+        ["full_name", "display_name"],
+        ["name", "display_name"],
+        ["full_name", "name"],
+        ["full_name"],
+        ["name"],
+        ["display_name"],
+        [],
+      ];
 
       for (const attemptColumns of attempts) {
         const response = await attemptSearch(attemptColumns);
@@ -182,7 +205,7 @@ export default function SearchPage() {
           const needle = trimmedWithoutAt || trimmed;
           setProfiles(
             ((response.data as SearchProfile[]) ?? []).filter(
-              (profile) => Boolean(profile.username) && profileMatchesQuery(profile, needle),
+              (profile) => Boolean(profile.username) && profileMatchesQuery(profile, viewerContext, needle),
             ),
           );
           setLoading(false);
@@ -211,7 +234,7 @@ export default function SearchPage() {
       mounted = false;
       window.clearTimeout(handle);
     };
-  }, [query]);
+  }, [query, viewerContext]);
 
   const onQueryChange = (value: string) => {
     setQuery(value);
