@@ -10,8 +10,9 @@
   --deep-purple: #4a148c;
   --tab-active-icon: #5f259f;
   --tabbar-bg: #ffffff;
-  --tabbar-height: 64px;
+  --tabbar-height: 77px;
   --tabbar-total-height: var(--tabbar-height, 64px);
+  --feed-divider: color-mix(in srgb, var(--line) 36%, var(--background));
   scroll-padding-top: calc(var(--tabbar-height, 64px) + env(safe-area-inset-top));
 }
 
@@ -24,6 +25,7 @@
   --accent: #4da0ff;
   --tab-active-icon: #b995ff;
   --tabbar-bg: #1b1d1f;
+  --feed-divider: color-mix(in srgb, var(--line) 28%, var(--background));
 }
 
 @theme inline {
@@ -521,7 +523,7 @@ button {
 
 .home-page .feed-post {
   border-radius: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, #fff);
+  border-bottom: 1px solid var(--feed-divider);
 }
 
 .home-page .feed-post:last-child {
@@ -1305,7 +1307,7 @@ button {
 
 @media (max-width: 768px) {
   :root {
-    --tabbar-height: 72px;
+    --tabbar-height: 86px;
   }
 
   .home-page .feed-list {
@@ -1317,7 +1319,7 @@ button {
   .home-page .feed-post {
     border: 0;
     border-radius: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, #fff);
+    border-bottom: 1px solid var(--feed-divider);
   }
 
   .home-page .feed-post:last-child {
