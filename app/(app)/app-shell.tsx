@@ -12,7 +12,7 @@ import { supabase } from "@/lib/supabase";
 import type { NotificationItem } from "@/lib/types";
 
 const PWA_ICON_URL =
-  "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301c";
+  "https://res.cloudinary.com/duy32f0q4/image/upload/v1772878441/simpleSocial_Logo_s9xbr8.png";
 const WORDMARK_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg";
 

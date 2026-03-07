@@ -4,7 +4,7 @@ import { THEME_COOKIE_KEY } from "@/lib/theme";
 import "./globals.css";
 
 const PWA_ICON_URL =
-  "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339929/ss_icon_jjsnbj.svg?v=20260301c";
+  "https://res.cloudinary.com/duy32f0q4/image/upload/v1772878441/simpleSocial_Logo_s9xbr8.png";
 
 /**
  * NOTE:
@@ -22,13 +22,13 @@ export const metadata: Metadata = {
   // Your inline script will swap it dynamically based on stored theme.
   themeColor: "#f7f7f5",
   icons: {
-    icon: [{ url: PWA_ICON_URL, type: "image/svg+xml" }],
-    shortcut: [{ url: PWA_ICON_URL, type: "image/svg+xml" }],
+    icon: [{ url: PWA_ICON_URL, type: "image/png" }],
+    shortcut: [{ url: PWA_ICON_URL, type: "image/png" }],
     apple: [
       {
         url: PWA_ICON_URL,
         sizes: "180x180",
-        type: "image/svg+xml",
+        type: "image/png",
       },
     ],
   },

@@ -344,7 +344,7 @@ p {
   min-height: 0;
   margin: 0;
   border-radius: 0.85rem;
-  transition: color 140ms ease, transform 180ms ease;
+  transition: color 140ms ease;
 }
 
 .tab-link::before {
@@ -367,7 +367,10 @@ p {
 .tab-icon {
   width: 1.45rem;
   height: 1.45rem;
-  transform: translateY(-7px);
+  transition: transform 180ms ease;
+}
+
+.tab-label {
   transition: transform 180ms ease;
 }
 
@@ -398,7 +401,11 @@ p {
 
 .tab-link.active .tab-icon {
   color: var(--tab-active-icon);
-  transform: translateY(-7px);
+  transform: translateY(-4px);
+}
+
+.tab-link.active .tab-label {
+  transform: translateY(-4px);
 }
 
 .card {

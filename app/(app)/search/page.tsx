@@ -57,7 +57,6 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
-  const [searchInputFocused, setSearchInputFocused] = useState(false);
   const [viewerContext, setViewerContext] = useState<ViewerContext>({
     id: null,
     fullName: "",
@@ -109,39 +108,6 @@ export default function SearchPage() {
       mounted = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (!searchInputFocused) {
-      return;
-    }
-
-    const scrollY = window.scrollY;
-    const body = document.body;
-    const html = document.documentElement;
-    const previousBodyPosition = body.style.position;
-    const previousBodyTop = body.style.top;
-    const previousBodyWidth = body.style.width;
-    const previousBodyOverflow = body.style.overflow;
-    const previousBodyTouchAction = body.style.touchAction;
-    const previousHtmlOverflow = html.style.overflow;
-
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
-    body.style.touchAction = "none";
-
-    return () => {
-      html.style.overflow = previousHtmlOverflow;
-      body.style.overflow = previousBodyOverflow;
-      body.style.position = previousBodyPosition;
-      body.style.top = previousBodyTop;
-      body.style.width = previousBodyWidth;
-      body.style.touchAction = previousBodyTouchAction;
-      window.scrollTo(0, scrollY);
-    };
-  }, [searchInputFocused]);
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -251,9 +217,7 @@ export default function SearchPage() {
           autoCapitalize="off"
           autoComplete="off"
           autoCorrect="off"
-          onBlur={() => setSearchInputFocused(false)}
           onChange={(event) => onQueryChange(event.target.value)}
-          onFocus={() => setSearchInputFocused(true)}
           placeholder="Search name or username"
           type="search"
           value={query}
