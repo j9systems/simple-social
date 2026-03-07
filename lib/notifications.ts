@@ -73,24 +73,23 @@ export async function createNotification({
 }
 
 export async function listNotifications(recipientUserId: string, limit = 40): Promise<ListNotificationsResult> {
-  const response = await supabase
+  const debugIssues: string[] = [];
+  const notificationsResponse = await supabase
     .from("notifications")
     .select(NOTIFICATION_SELECT)
     .eq("recipient_profile_id", recipientUserId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (response.error) {
-    const message = `Failed to load notifications: ${response.error.message}`;
+  let rows: NotificationRow[] = [];
+  if (notificationsResponse.error) {
+    const message = `Failed to load notifications: ${notificationsResponse.error.message}`;
     console.error(message);
-    return {
-      items: [],
-      errorMessage: message,
-    };
+    debugIssues.push(message);
+  } else {
+    rows = (notificationsResponse.data as unknown as NotificationRow[] | null) ?? [];
   }
 
-  const rows = (response.data as unknown as NotificationRow[] | null) ?? [];
-  const debugIssues: string[] = [];
   const followRequestsResponse = await supabase
     .from("follow_requests")
     .select("requester_id,requestee_id,created_at")
@@ -105,6 +104,11 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
   const followRequests = ((followRequestsResponse.data as FollowRequestRow[] | null) ?? []).filter(
     (row): row is FollowRequestRow & { requester_id: string; requestee_id: string } =>
       Boolean(row.requester_id) && Boolean(row.requestee_id),
+  );
+  const existingFollowRequestKeys = new Set(
+    rows
+      .filter((row) => row.type === "follow_request" && Boolean(row.actor_profile_id))
+      .map((row) => `${row.actor_profile_id}:${row.recipient_profile_id}`),
   );
 
   const actorIds = Array.from(
@@ -168,22 +172,24 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
     };
   });
 
-  const followRequestItems = followRequests.map((request) => {
-    const actorProfile = profileById.get(request.requester_id);
-    return {
-      id: `follow_request:${request.requester_id}:${request.requestee_id}`,
-      type: "follow_request" as NotificationType,
-      recipient_profile_id: request.requestee_id,
-      actor_profile_id: request.requester_id,
-      actor_username: actorProfile?.username ?? null,
-      actor_avatar_url: actorProfile?.avatar_url ?? null,
-      post_id: null,
-      post_image_url: null,
-      comment_id: null,
-      created_at: request.created_at,
-      read_at: null,
-    };
-  });
+  const followRequestItems = followRequests
+    .filter((request) => !existingFollowRequestKeys.has(`${request.requester_id}:${request.requestee_id}`))
+    .map((request) => {
+      const actorProfile = profileById.get(request.requester_id);
+      return {
+        id: `follow_request:${request.requester_id}:${request.requestee_id}`,
+        type: "follow_request" as NotificationType,
+        recipient_profile_id: request.requestee_id,
+        actor_profile_id: request.requester_id,
+        actor_username: actorProfile?.username ?? null,
+        actor_avatar_url: actorProfile?.avatar_url ?? null,
+        post_id: null,
+        post_image_url: null,
+        comment_id: null,
+        created_at: request.created_at,
+        read_at: null,
+      };
+    });
 
   const mergedItems = [...items, ...followRequestItems];
   mergedItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
