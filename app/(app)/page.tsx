@@ -89,6 +89,16 @@ function CommentIcon() {
   );
 }
 
+function MoreIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="12" cy="5" r="1.9" />
+      <circle cx="12" cy="12" r="1.9" />
+      <circle cx="12" cy="19" r="1.9" />
+    </svg>
+  );
+}
+
 type CommentRow = {
   id: string;
   post_id: string;
@@ -161,6 +171,8 @@ export default function HomePage() {
   const [commentSubmitError, setCommentSubmitError] = useState<string | null>(null);
   const [commentOwnerMenuId, setCommentOwnerMenuId] = useState<string | null>(null);
   const [commentDeletePendingId, setCommentDeletePendingId] = useState<string | null>(null);
+  const [postOwnerMenuId, setPostOwnerMenuId] = useState<string | null>(null);
+  const [postDeletePendingId, setPostDeletePendingId] = useState<string | null>(null);
   const [likedCommentIds, setLikedCommentIds] = useState<Record<string, boolean>>({});
   const [viewerId, setViewerId] = useState<string | null>(initialHomeFeedCache?.viewerId ?? null);
   const [viewerUsername, setViewerUsername] = useState<string | null>(initialHomeFeedCache?.viewerUsername ?? null);
@@ -649,6 +661,54 @@ export default function HomePage() {
     setCommentDeletePendingId(null);
   }, [commentDeletePendingId, viewerId]);
 
+  const deletePost = useCallback(async (post: FeedPost) => {
+    if (!viewerId || post.user_id !== viewerId || postDeletePendingId === post.id) {
+      return;
+    }
+
+    setPostOwnerMenuId(null);
+    if (!window.confirm("Delete this photo? This action cannot be undone.")) {
+      return;
+    }
+
+    setPostDeletePendingId(post.id);
+    setError(null);
+
+    const { error: deleteError } = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", post.id)
+      .eq("user_id", viewerId);
+
+    if (deleteError) {
+      setError(deleteError.message);
+      setPostDeletePendingId(null);
+      return;
+    }
+
+    setPosts((current) => current.filter((entry) => entry.id !== post.id));
+    setCommentsByPostId((current) => {
+      const next = { ...current };
+      delete next[post.id];
+      return next;
+    });
+    setCommentDraftByPostId((current) => {
+      const next = { ...current };
+      delete next[post.id];
+      return next;
+    });
+    setCommentSubmitPendingByPostId((current) => {
+      const next = { ...current };
+      delete next[post.id];
+      return next;
+    });
+    setPostDeletePendingId(null);
+
+    if (openCommentsPostId === post.id) {
+      closeComments();
+    }
+  }, [closeComments, openCommentsPostId, postDeletePendingId, viewerId]);
+
   const handleImagePinchStart = useCallback((postId: string, event: TouchEvent<HTMLImageElement>) => {
     if (event.touches.length < 2) {
       return;
@@ -1127,36 +1187,72 @@ export default function HomePage() {
           const liked = Boolean(likedPostIds[post.id]);
           const likePending = Boolean(likePendingIds[post.id]);
           const displayedLikeCount = post.like_count;
+          const isOwnPost = Boolean(viewerId && viewerId === post.user_id);
+          const isPostMenuOpen = postOwnerMenuId === post.id;
+          const isPostDeletePending = postDeletePendingId === post.id;
 
           return (
             <article className="feed-post" key={post.id}>
-            <header className="feed-post-header">
-              {post.username ? (
-                <Link className="feed-user-link" href={`/u/${post.username}`}>
-                  <img
-                    alt={`${post.username} avatar`}
-                    className="avatar"
-                    src={buildAvatarSrc(post.avatar_url, avatarVersion)}
-                  />
-                  <div className="feed-post-meta">
-                    <strong>{post.username}</strong>
-                    <span>{formatDate(post.created_at)}</span>
+              <header className="feed-post-header">
+                <div className="feed-post-header-main">
+                  {post.username ? (
+                    <Link className="feed-user-link" href={`/u/${post.username}`}>
+                      <img
+                        alt={`${post.username} avatar`}
+                        className="avatar"
+                        src={buildAvatarSrc(post.avatar_url, avatarVersion)}
+                      />
+                      <div className="feed-post-meta">
+                        <strong>{post.username}</strong>
+                        <span>{formatDate(post.created_at)}</span>
+                      </div>
+                    </Link>
+                  ) : (
+                    <>
+                      <img
+                        alt="User avatar"
+                        className="avatar"
+                        src={buildAvatarSrc(post.avatar_url, avatarVersion)}
+                      />
+                      <div className="feed-post-meta">
+                        <strong>Unknown user</strong>
+                        <span>{formatDate(post.created_at)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {isOwnPost ? (
+                  <div className="post-owner-menu">
+                    <button
+                      aria-expanded={isPostMenuOpen}
+                      aria-haspopup="menu"
+                      aria-label="Post options"
+                      className="post-owner-menu-button"
+                      onClick={() => {
+                        setPostOwnerMenuId((current) => (current === post.id ? null : post.id));
+                      }}
+                      type="button"
+                    >
+                      <MoreIcon />
+                    </button>
+                    {isPostMenuOpen ? (
+                      <div className="post-owner-menu-dropdown" role="menu">
+                        <button
+                          className="post-owner-menu-item"
+                          disabled={isPostDeletePending}
+                          onClick={() => {
+                            void deletePost(post);
+                          }}
+                          role="menuitem"
+                          type="button"
+                        >
+                          {isPostDeletePending ? "Deleting..." : "Delete photo"}
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
-                </Link>
-              ) : (
-                <>
-                  <img
-                    alt="User avatar"
-                    className="avatar"
-                    src={buildAvatarSrc(post.avatar_url, avatarVersion)}
-                  />
-                  <div className="feed-post-meta">
-                    <strong>Unknown user</strong>
-                    <span>{formatDate(post.created_at)}</span>
-                  </div>
-                </>
-              )}
-            </header>
+                ) : null}
+              </header>
 
             <div className="feed-image-wrap">
               <img
@@ -1224,14 +1320,18 @@ export default function HomePage() {
     handleImagePinchStart,
     likeBounceByPostId,
     likePendingIds,
+    postDeletePendingId,
+    postOwnerMenuId,
     doubleTapLikeOverlayByPostId,
     likedPostIds,
     loading,
     openComments,
+    deletePost,
     pinchScaleByPostId,
     posts,
     triggerDoubleTapLike,
     toggleLike,
+    viewerId,
   ]);
 
   const openCommentsPost = openCommentsPostId
