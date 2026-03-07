@@ -20,6 +20,20 @@ type ViewerContext = {
   emailPrefix: string;
 };
 
+function normalizeSearchTerm(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function profileMatchesQuery(profile: SearchProfile, query: string) {
+  const needle = normalizeSearchTerm(query);
+  if (!needle) return true;
+
+  const username = normalizeSearchTerm(profile.username ?? "");
+  const fullName = normalizeSearchTerm(profile.full_name ?? "");
+  const name = normalizeSearchTerm(profile.name ?? "");
+  return username.includes(needle) || fullName.includes(needle) || name.includes(needle);
+}
+
 function buildDisplayName(profile: SearchProfile, viewer: ViewerContext) {
   const fullName = profile.full_name?.trim();
   if (fullName) {
@@ -165,7 +179,12 @@ export default function SearchPage() {
         }
 
         if (!response.error) {
-          setProfiles(((response.data as SearchProfile[]) ?? []).filter((profile) => Boolean(profile.username)));
+          const needle = trimmedWithoutAt || trimmed;
+          setProfiles(
+            ((response.data as SearchProfile[]) ?? []).filter(
+              (profile) => Boolean(profile.username) && profileMatchesQuery(profile, needle),
+            ),
+          );
           setLoading(false);
           return;
         }

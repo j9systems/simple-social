@@ -105,6 +105,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   const isHomeFeed = pathname === "/";
   const isProfilePage = pathname === "/profile";
+  const isSearchPage = pathname === "/search";
   const useHomeBrandTreatment = pathname === "/" || pathname === "/search" || pathname === "/upload";
   const homeInitialFeedReadyOnWindow =
     typeof window !== "undefined" &&
@@ -315,6 +316,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
       event.preventDefault();
       dismissSoftKeyboard();
+      setIsKeyboardOpen(false);
       router.push(href);
     },
     [dismissSoftKeyboard, pathname, router],
@@ -327,6 +329,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
       event.preventDefault();
       dismissSoftKeyboard();
+      setIsKeyboardOpen(false);
       router.push(href);
     },
     [dismissSoftKeyboard, pathname, router],
@@ -414,6 +417,11 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     if (typeof window === "undefined") return;
 
     const evaluateKeyboardState = () => {
+      if (pathname !== "/search") {
+        setIsKeyboardOpen(false);
+        return;
+      }
+
       const activeElement = document.activeElement;
       const focusedTextInput = isTextInputElement(activeElement);
       const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
@@ -447,17 +455,22 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       window.visualViewport?.removeEventListener("resize", evaluateKeyboardState);
       window.visualViewport?.removeEventListener("scroll", evaluateKeyboardState);
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
+    dismissSoftKeyboard();
     const frame = window.requestAnimationFrame(() => {
       setIsKeyboardOpen(false);
     });
+    const resetTimer = window.setTimeout(() => {
+      setIsKeyboardOpen(false);
+    }, 140);
 
     return () => {
       window.cancelAnimationFrame(frame);
+      window.clearTimeout(resetTimer);
     };
-  }, [pathname]);
+  }, [dismissSoftKeyboard, pathname]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -659,7 +672,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       ) : null}
 
       {!showHomeStartupSplash ? (
-        <nav aria-label="Primary" className={`tab-bar ${isKeyboardOpen ? "is-keyboard-open" : ""}`} ref={tabBarRef}>
+        <nav aria-label="Primary" className={`tab-bar ${isSearchPage && isKeyboardOpen ? "is-keyboard-open" : ""}`} ref={tabBarRef}>
           <div className="tab-bar-inner">
             {tabs.map((tab) => (
               <Link
