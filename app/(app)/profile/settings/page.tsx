@@ -89,7 +89,7 @@ export default function SettingsPage() {
       for (const attempt of profileSelectAttempts) {
         const response = await supabase.from("profiles").select(attempt.fields).eq("id", data.user.id).maybeSingle();
         if (!response.error) {
-          profileData = normalizeProfile(response.data);
+          profileData = normalizeProfile(response.data as Parameters<typeof normalizeProfile>[0]);
           profileError = null;
           setSupportsFullNameColumn(attempt.hasFullName);
           setSupportsPrivateColumn(attempt.hasIsPrivate);
