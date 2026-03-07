@@ -10,7 +10,7 @@
   --tab-active-icon: #5f259f;
   --tabbar-bg: #ffffff;
   --tabbar-height: 64px;
-  --tabbar-total-height: calc(var(--tabbar-height, 64px) + env(safe-area-inset-bottom));
+  --tabbar-total-height: var(--tabbar-height, 64px);
   scroll-padding-top: calc(var(--tabbar-height, 64px) + env(safe-area-inset-top));
 }
 
@@ -277,7 +277,7 @@ p {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0; /* always anchored to bottom — never env() here */
+  bottom: 0;
 
   /* Visuals */
   border-top: 1px solid var(--line);
@@ -286,12 +286,12 @@ p {
   z-index: 1000;
 
   /* Stable height calculation */
-  height: calc(var(--tabbar-height, 64px) + env(safe-area-inset-bottom));
+  height: var(--tabbar-height, 64px);
 
   /* Safe-area applied as padding, not position */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: 0;
 
   /* Prevent layout reflow from internal flex children */
   display: flex;
