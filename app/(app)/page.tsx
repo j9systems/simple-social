@@ -31,6 +31,18 @@ type TapSnapshot = {
   y: number;
 };
 
+type HomeFeedCacheSnapshot = {
+  cachedAt: number;
+  posts: FeedPost[];
+  likedPostIds: Record<string, boolean>;
+  viewerId: string | null;
+  viewerUsername: string | null;
+  viewerAvatarUrl: string | null;
+};
+
+const HOME_FEED_CACHE_TTL_MS = 3 * 60 * 1000;
+let homeFeedCacheSnapshot: HomeFeedCacheSnapshot | null = null;
+
 function getPinchDistance(touches: PinchTouches) {
   if (touches.length < 2) {
     return 0;
@@ -137,8 +149,10 @@ function normalizeComment(
 }
 
 export default function HomePage() {
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({});
+  const initialHomeFeedCache = homeFeedCacheSnapshot;
+
+  const [posts, setPosts] = useState<FeedPost[]>(initialHomeFeedCache?.posts ?? []);
+  const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>(initialHomeFeedCache?.likedPostIds ?? {});
   const [commentsByPostId, setCommentsByPostId] = useState<Record<string, FeedComment[]>>({});
   const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
   const [commentDraftByPostId, setCommentDraftByPostId] = useState<Record<string, string>>({});
@@ -148,14 +162,14 @@ export default function HomePage() {
   const [commentOwnerMenuId, setCommentOwnerMenuId] = useState<string | null>(null);
   const [commentDeletePendingId, setCommentDeletePendingId] = useState<string | null>(null);
   const [likedCommentIds, setLikedCommentIds] = useState<Record<string, boolean>>({});
-  const [viewerId, setViewerId] = useState<string | null>(null);
-  const [viewerUsername, setViewerUsername] = useState<string | null>(null);
-  const [viewerAvatarUrl, setViewerAvatarUrl] = useState<string | null>(null);
+  const [viewerId, setViewerId] = useState<string | null>(initialHomeFeedCache?.viewerId ?? null);
+  const [viewerUsername, setViewerUsername] = useState<string | null>(initialHomeFeedCache?.viewerUsername ?? null);
+  const [viewerAvatarUrl, setViewerAvatarUrl] = useState<string | null>(initialHomeFeedCache?.viewerAvatarUrl ?? null);
   const [likePendingIds, setLikePendingIds] = useState<Record<string, boolean>>({});
   const [commentLikePendingIds, setCommentLikePendingIds] = useState<Record<string, boolean>>({});
   const [commentSubmitPendingByPostId, setCommentSubmitPendingByPostId] = useState<Record<string, boolean>>({});
   const [avatarVersion, setAvatarVersion] = useState(0);
-  const [loading, setLoading] = useState(hasSupabaseEnv);
+  const [loading, setLoading] = useState(hasSupabaseEnv && !initialHomeFeedCache);
   const [error, setError] = useState<string | null>(null);
   const [doubleTapLikeOverlayByPostId, setDoubleTapLikeOverlayByPostId] = useState<Record<string, boolean>>({});
   const [likeBounceByPostId, setLikeBounceByPostId] = useState<Record<string, boolean>>({});
@@ -172,9 +186,21 @@ export default function HomePage() {
   const pullActiveRef = useRef(false);
   const pullDistanceRef = useRef(0);
   const refreshStartedAtRef = useRef<number | null>(null);
-  const hasCompletedInitialFeedLoadRef = useRef(false);
+  const hasCompletedInitialFeedLoadRef = useRef(Boolean(initialHomeFeedCache));
   const doubleTapOverlayTimerByPostIdRef = useRef<Record<string, number>>({});
   const likeBounceTimerByPostIdRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!initialHomeFeedCache) {
+      return;
+    }
+
+    const nextWindow = window as Window & { __ssHomeInitialFeedReady?: boolean };
+    if (!nextWindow.__ssHomeInitialFeedReady) {
+      nextWindow.__ssHomeInitialFeedReady = true;
+      window.dispatchEvent(new Event(HOME_INITIAL_FEED_READY_EVENT));
+    }
+  }, [initialHomeFeedCache]);
 
   const triggerFeedRefresh = useCallback((holdDistance: number = PULL_TRIGGER_DISTANCE) => {
     if (isRefreshingFeed) {
@@ -738,6 +764,18 @@ export default function HomePage() {
       return;
     }
 
+    if (feedRefreshTick === 0 && initialHomeFeedCache) {
+      const cacheAge = Date.now() - initialHomeFeedCache.cachedAt;
+      if (cacheAge <= HOME_FEED_CACHE_TTL_MS) {
+        if (!hasCompletedInitialFeedLoadRef.current) {
+          hasCompletedInitialFeedLoadRef.current = true;
+          (window as Window & { __ssHomeInitialFeedReady?: boolean }).__ssHomeInitialFeedReady = true;
+          window.dispatchEvent(new Event(HOME_INITIAL_FEED_READY_EVENT));
+        }
+        return;
+      }
+    }
+
     let mounted = true;
 
     const loadFeed = async () => {
@@ -856,7 +894,22 @@ export default function HomePage() {
     return () => {
       mounted = false;
     };
-  }, [feedRefreshTick]);
+  }, [feedRefreshTick, initialHomeFeedCache]);
+
+  useEffect(() => {
+    if (loading || error || !viewerId) {
+      return;
+    }
+
+    homeFeedCacheSnapshot = {
+      cachedAt: Date.now(),
+      posts,
+      likedPostIds,
+      viewerId,
+      viewerUsername,
+      viewerAvatarUrl,
+    };
+  }, [error, likedPostIds, loading, posts, viewerAvatarUrl, viewerId, viewerUsername]);
 
   useEffect(() => {
     const syncAvatarVersion = () => {

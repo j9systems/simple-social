@@ -184,6 +184,39 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   );
 
   useEffect(() => {
+    type IdleCallbackHandle = number;
+    type IdleCallbackFn = (callback: () => void) => IdleCallbackHandle;
+    type CancelIdleCallbackFn = (handle: IdleCallbackHandle) => void;
+
+    const warmTabs = () => {
+      router.prefetch("/");
+      router.prefetch("/profile");
+    };
+
+    const maybeWindow = window as Window & {
+      requestIdleCallback?: IdleCallbackFn;
+      cancelIdleCallback?: CancelIdleCallbackFn;
+    };
+
+    if (typeof maybeWindow.requestIdleCallback === "function") {
+      const handle = maybeWindow.requestIdleCallback(() => {
+        warmTabs();
+      });
+
+      return () => {
+        if (typeof maybeWindow.cancelIdleCallback === "function") {
+          maybeWindow.cancelIdleCallback(handle);
+        }
+      };
+    }
+
+    const timeout = window.setTimeout(warmTabs, 160);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [router]);
+
+  useEffect(() => {
     let active = true;
 
     const loadNotificationBadge = async () => {

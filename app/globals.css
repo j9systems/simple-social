@@ -353,7 +353,7 @@ p {
 .tab-icon {
   width: 1.45rem;
   height: 1.45rem;
-  transform: translateY(-4px);
+  transform: translateY(-7px);
   transition: transform 180ms ease;
 }
 
@@ -384,7 +384,7 @@ p {
 
 .tab-link.active .tab-icon {
   color: var(--tab-active-icon);
-  transform: translateY(-4px);
+  transform: translateY(-7px);
 }
 
 .card {

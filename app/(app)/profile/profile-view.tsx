@@ -15,21 +15,44 @@ type ProfileViewProps = {
   username?: string;
 };
 
+type ProfileCacheSnapshot = {
+  cachedAt: number;
+  viewer: User | null;
+  profile: ProfileRecord | null;
+  posts: FeedPost[];
+  followersCount: number;
+  followingCount: number;
+  isFollowing: boolean;
+};
+
+const PROFILE_CACHE_TTL_MS = 3 * 60 * 1000;
+const profileCacheByKey = new Map<string, ProfileCacheSnapshot>();
+
 export default function ProfileView({ username }: ProfileViewProps) {
-  const [viewer, setViewer] = useState<User | null>(null);
-  const [profile, setProfile] = useState<ProfileRecord | null>(null);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const profileCacheKey = username ? `u:${username}` : "self";
+  const initialProfileCache = profileCacheByKey.get(profileCacheKey) ?? null;
+
+  const [viewer, setViewer] = useState<User | null>(initialProfileCache?.viewer ?? null);
+  const [profile, setProfile] = useState<ProfileRecord | null>(initialProfileCache?.profile ?? null);
+  const [posts, setPosts] = useState<FeedPost[]>(initialProfileCache?.posts ?? []);
+  const [followersCount, setFollowersCount] = useState(initialProfileCache?.followersCount ?? 0);
+  const [followingCount, setFollowingCount] = useState(initialProfileCache?.followingCount ?? 0);
+  const [isFollowing, setIsFollowing] = useState(initialProfileCache?.isFollowing ?? false);
   const [avatarVersion, setAvatarVersion] = useState(0);
-  const [loading, setLoading] = useState(hasSupabaseEnv);
+  const [loading, setLoading] = useState(hasSupabaseEnv && !initialProfileCache);
   const [pendingFollowAction, setPendingFollowAction] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
       return;
+    }
+
+    if (initialProfileCache) {
+      const cacheAge = Date.now() - initialProfileCache.cachedAt;
+      if (cacheAge <= PROFILE_CACHE_TTL_MS) {
+        return;
+      }
     }
 
     let mounted = true;
@@ -141,7 +164,23 @@ export default function ProfileView({ username }: ProfileViewProps) {
     return () => {
       mounted = false;
     };
-  }, [username]);
+  }, [initialProfileCache, profileCacheKey, username]);
+
+  useEffect(() => {
+    if (loading || error || !profile) {
+      return;
+    }
+
+    profileCacheByKey.set(profileCacheKey, {
+      cachedAt: Date.now(),
+      viewer,
+      profile,
+      posts,
+      followersCount,
+      followingCount,
+      isFollowing,
+    });
+  }, [error, followersCount, followingCount, isFollowing, loading, posts, profile, profileCacheKey, viewer]);
 
   useEffect(() => {
     const syncAvatarVersion = () => {
