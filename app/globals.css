@@ -319,7 +319,7 @@ p {
   text-decoration: none;
   text-align: center;
   color: var(--muted);
-  padding: 0.45rem 0.45rem;
+  padding: 0.35rem 0.45rem 0.55rem;
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.1;
@@ -350,7 +350,7 @@ p {
 .tab-icon {
   width: 1.45rem;
   height: 1.45rem;
-  transform: translateY(1px);
+  transform: translateY(-1px);
   transition: transform 180ms ease;
 }
 
@@ -381,7 +381,7 @@ p {
 
 .tab-link.active .tab-icon {
   color: var(--tab-active-icon);
-  transform: none;
+  transform: translateY(-1px);
 }
 
 .card {

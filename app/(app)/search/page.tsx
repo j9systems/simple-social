@@ -13,7 +13,14 @@ type SearchProfile = ProfileRecord & {
   name?: string | null;
 };
 
-function buildDisplayName(profile: SearchProfile) {
+type ViewerContext = {
+  id: string | null;
+  fullName: string;
+  username: string;
+  emailPrefix: string;
+};
+
+function buildDisplayName(profile: SearchProfile, viewer: ViewerContext) {
   const fullName = profile.full_name?.trim();
   if (fullName) {
     return fullName;
@@ -24,8 +31,21 @@ function buildDisplayName(profile: SearchProfile) {
     return name;
   }
 
+  const isOwnProfile = Boolean(viewer.id && profile.id === viewer.id);
+  if (isOwnProfile && viewer.fullName) {
+    return viewer.fullName;
+  }
+
   if (profile.username) {
     return profile.username;
+  }
+
+  if (isOwnProfile && viewer.username) {
+    return viewer.username;
+  }
+
+  if (isOwnProfile && viewer.emailPrefix) {
+    return viewer.emailPrefix;
   }
 
   return "User";
@@ -37,6 +57,13 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
+  const [searchInputFocused, setSearchInputFocused] = useState(false);
+  const [viewerContext, setViewerContext] = useState<ViewerContext>({
+    id: null,
+    fullName: "",
+    username: "",
+    emailPrefix: "",
+  });
 
   useEffect(() => {
     const syncAvatarVersion = () => {
@@ -50,6 +77,71 @@ export default function SearchPage() {
       window.removeEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasSupabaseEnv) {
+      return;
+    }
+
+    let mounted = true;
+    const loadViewerContext = async () => {
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (!mounted || userError || !data.user) {
+        return;
+      }
+
+      const metadata = data.user.user_metadata ?? {};
+      const fullName = typeof metadata.full_name === "string" ? metadata.full_name.trim() : "";
+      const username = typeof metadata.username === "string" ? metadata.username.trim() : "";
+      const emailPrefix = data.user.email?.split("@")[0]?.trim() ?? "";
+
+      setViewerContext({
+        id: data.user.id,
+        fullName,
+        username,
+        emailPrefix,
+      });
+    };
+
+    void loadViewerContext();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!searchInputFocused) {
+      return;
+    }
+
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
+    const previousBodyPosition = body.style.position;
+    const previousBodyTop = body.style.top;
+    const previousBodyWidth = body.style.width;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyTouchAction = body.style.touchAction;
+    const previousHtmlOverflow = html.style.overflow;
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.touchAction = "none";
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+      body.style.position = previousBodyPosition;
+      body.style.top = previousBodyTop;
+      body.style.width = previousBodyWidth;
+      body.style.touchAction = previousBodyTouchAction;
+      window.scrollTo(0, scrollY);
+    };
+  }, [searchInputFocused]);
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -159,7 +251,9 @@ export default function SearchPage() {
           autoCapitalize="off"
           autoComplete="off"
           autoCorrect="off"
+          onBlur={() => setSearchInputFocused(false)}
           onChange={(event) => onQueryChange(event.target.value)}
+          onFocus={() => setSearchInputFocused(true)}
           placeholder="Search name or username"
           type="search"
           value={query}
@@ -178,7 +272,7 @@ export default function SearchPage() {
               return null;
             }
 
-            const displayName = buildDisplayName(profile);
+            const displayName = buildDisplayName(profile, viewerContext);
             return (
               <li key={profile.id}>
                 <Link className="search-result-link" href={`/u/${profile.username}`}>
