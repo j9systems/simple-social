@@ -26,9 +26,10 @@ export type ProfileRecord = {
   username: string | null;
   avatar_url: string | null;
   full_name: string | null;
+  is_private?: boolean;
 };
 
-export type NotificationType = "follow" | "post_like" | "comment" | "comment_like";
+export type NotificationType = "follow" | "follow_request" | "post_like" | "comment" | "comment_like";
 
 export type NotificationItem = {
   id: string;

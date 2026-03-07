@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
-import { isMissingFullNameColumnError } from "@/lib/supabase-errors";
+import { createNotification } from "@/lib/notifications";
+import { isMissingColumnError, isMissingFullNameColumnError, isMissingTableError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedPost, ProfileRecord } from "@/lib/types";
 
@@ -23,6 +24,8 @@ type ProfileCacheSnapshot = {
   followersCount: number;
   followingCount: number;
   isFollowing: boolean;
+  hasPendingFollowRequest: boolean;
+  isPrivate: boolean;
 };
 
 const PROFILE_CACHE_TTL_MS = 3 * 60 * 1000;
@@ -38,6 +41,10 @@ export default function ProfileView({ username }: ProfileViewProps) {
   const [followersCount, setFollowersCount] = useState(initialProfileCache?.followersCount ?? 0);
   const [followingCount, setFollowingCount] = useState(initialProfileCache?.followingCount ?? 0);
   const [isFollowing, setIsFollowing] = useState(initialProfileCache?.isFollowing ?? false);
+  const [hasPendingFollowRequest, setHasPendingFollowRequest] = useState(
+    initialProfileCache?.hasPendingFollowRequest ?? false,
+  );
+  const [isPrivate, setIsPrivate] = useState(initialProfileCache?.isPrivate ?? false);
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv && !initialProfileCache);
   const [pendingFollowAction, setPendingFollowAction] = useState(false);
@@ -80,29 +87,49 @@ export default function ProfileView({ username }: ProfileViewProps) {
 
       setViewer(userData.user);
 
-      const profileQuery = supabase.from("profiles").select("id,username,avatar_url,full_name");
-      let profileResponse = username
-        ? await profileQuery.eq("username", username).maybeSingle()
-        : await profileQuery.eq("id", userData.user.id).maybeSingle();
+      const resolveProfile = async () => {
+        const attempts = [
+          { fields: "id,username,avatar_url,full_name,is_private", hasPrivate: true },
+          { fields: "id,username,avatar_url,full_name", hasPrivate: false },
+          { fields: "id,username,avatar_url,is_private", hasPrivate: true },
+          { fields: "id,username,avatar_url", hasPrivate: false },
+        ] as const;
 
-      if (isMissingFullNameColumnError(profileResponse.error)) {
-        const fallbackProfileQuery = supabase.from("profiles").select("id,username,avatar_url");
-        profileResponse = username
-          ? await fallbackProfileQuery.eq("username", username).maybeSingle()
-          : await fallbackProfileQuery.eq("id", userData.user.id).maybeSingle();
-      }
+        for (const attempt of attempts) {
+          const query = supabase.from("profiles").select(attempt.fields);
+          const response = username
+            ? await query.eq("username", username).maybeSingle()
+            : await query.eq("id", userData.user.id).maybeSingle();
 
+          if (!response.error) {
+            const row = (response.data as (ProfileRecord & { is_private?: boolean | null }) | null) ?? null;
+            return {
+              profile: row ? { ...row, is_private: row.is_private ?? false } : null,
+              error: null,
+              hasPrivateColumn: attempt.hasPrivate,
+            };
+          }
+
+          if (!isMissingFullNameColumnError(response.error) && !isMissingColumnError(response.error, "is_private")) {
+            return { profile: null, error: response.error, hasPrivateColumn: attempt.hasPrivate };
+          }
+        }
+
+        return { profile: null, error: { message: "Could not load profile." }, hasPrivateColumn: false };
+      };
+
+      const resolvedProfile = await resolveProfile();
       if (!mounted) {
         return;
       }
 
-      if (profileResponse.error) {
-        setError(profileResponse.error.message);
+      if (resolvedProfile.error) {
+        setError(resolvedProfile.error.message);
         setLoading(false);
         return;
       }
 
-      const nextProfile = profileResponse.data as ProfileRecord | null;
+      const nextProfile = resolvedProfile.profile;
       if (!nextProfile) {
         setError(username ? `Profile @${username} was not found.` : "Profile not found.");
         setLoading(false);
@@ -110,11 +137,9 @@ export default function ProfileView({ username }: ProfileViewProps) {
       }
 
       const ownProfile = nextProfile.id === userData.user.id;
+      setIsPrivate(Boolean(nextProfile.is_private));
 
-      const [postsResponse, followersResponse, followingResponse, followStateResponse] = await Promise.all([
-        supabase.from("feed_posts").select(FEED_FIELDS).eq("user_id", nextProfile.id).order("created_at", {
-          ascending: false,
-        }),
+      const [followersResponse, followingResponse, followStateResponse, pendingRequestResponse] = await Promise.all([
         supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", nextProfile.id),
         supabase.from("follows").select("following_id", { count: "exact", head: true }).eq("follower_id", nextProfile.id),
         ownProfile
@@ -125,16 +150,18 @@ export default function ProfileView({ username }: ProfileViewProps) {
               .eq("follower_id", userData.user.id)
               .eq("following_id", nextProfile.id)
               .maybeSingle(),
+        ownProfile
+          ? Promise.resolve({ data: null, error: null })
+          : supabase
+              .from("follow_requests")
+              .select("requester_id")
+              .eq("requester_id", userData.user.id)
+              .eq("requestee_id", nextProfile.id)
+              .maybeSingle(),
       ]);
 
       if (!mounted) {
         return;
-      }
-
-      if (postsResponse.error) {
-        setError(postsResponse.error.message);
-      } else {
-        setPosts((postsResponse.data as FeedPost[]) ?? []);
       }
 
       if (followersResponse.error) {
@@ -153,6 +180,40 @@ export default function ProfileView({ username }: ProfileViewProps) {
         setError(followStateResponse.error.message);
       } else {
         setIsFollowing(Boolean(followStateResponse.data));
+      }
+
+      if (pendingRequestResponse.error) {
+        if (!isMissingTableError(pendingRequestResponse.error, "follow_requests")) {
+          setError(pendingRequestResponse.error.message);
+        }
+        setHasPendingFollowRequest(false);
+      } else {
+        setHasPendingFollowRequest(Boolean(pendingRequestResponse.data));
+      }
+
+      const isFollowingUser = Boolean(followStateResponse.data);
+      const canViewPosts = ownProfile || !nextProfile.is_private || isFollowingUser || !resolvedProfile.hasPrivateColumn;
+      if (!canViewPosts) {
+        setPosts([]);
+        setProfile(nextProfile);
+        setLoading(false);
+        return;
+      }
+
+      const postsResponse = await supabase
+        .from("feed_posts")
+        .select(FEED_FIELDS)
+        .eq("user_id", nextProfile.id)
+        .order("created_at", { ascending: false });
+
+      if (!mounted) {
+        return;
+      }
+
+      if (postsResponse.error) {
+        setError(postsResponse.error.message);
+      } else {
+        setPosts((postsResponse.data as FeedPost[]) ?? []);
       }
 
       setProfile(nextProfile);
@@ -179,8 +240,22 @@ export default function ProfileView({ username }: ProfileViewProps) {
       followersCount,
       followingCount,
       isFollowing,
+      hasPendingFollowRequest,
+      isPrivate,
     });
-  }, [error, followersCount, followingCount, isFollowing, loading, posts, profile, profileCacheKey, viewer]);
+  }, [
+    error,
+    followersCount,
+    followingCount,
+    hasPendingFollowRequest,
+    isFollowing,
+    isPrivate,
+    loading,
+    posts,
+    profile,
+    profileCacheKey,
+    viewer,
+  ]);
 
   useEffect(() => {
     const syncAvatarVersion = () => {
@@ -207,6 +282,16 @@ export default function ProfileView({ username }: ProfileViewProps) {
     viewer?.email?.split("@")[0] ||
     "Profile";
   const showSettings = isOwnProfile;
+  const canViewPrivatePosts = isOwnProfile || !isPrivate || isFollowing;
+  const followButtonLabel = pendingFollowAction
+    ? "Updating..."
+    : isFollowing
+      ? "Following"
+      : isPrivate
+        ? hasPendingFollowRequest
+          ? "Requested"
+          : "Request to follow"
+        : "Follow";
   const usernameLabel =
     profile?.username ?? (isOwnProfile && metadataUsername ? metadataUsername : viewer?.email?.split("@")[0] ?? "profile");
   const followersHref = isOwnProfile
@@ -244,8 +329,37 @@ export default function ProfileView({ username }: ProfileViewProps) {
         setError(unfollowError.message);
       } else {
         setIsFollowing(false);
+        setHasPendingFollowRequest(false);
         setFollowersCount((count) => Math.max(0, count - 1));
       }
+      setPendingFollowAction(false);
+      return;
+    }
+
+    if (isPrivate) {
+      const { error: requestError } = await supabase.from("follow_requests").upsert(
+        {
+          requester_id: viewer.id,
+          requestee_id: profile.id,
+        },
+        { onConflict: "requester_id,requestee_id" },
+      );
+
+      if (requestError) {
+        if (isMissingTableError(requestError, "follow_requests")) {
+          setError("Follow requests are unavailable. Please run the latest database migration.");
+        } else {
+          setError(requestError.message);
+        }
+      } else {
+        setHasPendingFollowRequest(true);
+        await createNotification({
+          type: "follow_request",
+          recipientUserId: profile.id,
+          actorUserId: viewer.id,
+        });
+      }
+
       setPendingFollowAction(false);
       return;
     }
@@ -259,6 +373,7 @@ export default function ProfileView({ username }: ProfileViewProps) {
       setError(followError.message);
     } else {
       setIsFollowing(true);
+      setHasPendingFollowRequest(false);
       setFollowersCount((count) => count + 1);
     }
 
@@ -332,23 +447,41 @@ export default function ProfileView({ username }: ProfileViewProps) {
       </div>
       {!isOwnProfile && profile ? (
         <div className="profile-actions">
-          <button className={isFollowing ? "secondary-button" : "primary-button"} onClick={toggleFollow} type="button">
-            {pendingFollowAction ? "Updating..." : isFollowing ? "Following" : "Follow"}
+          <button
+            className={isFollowing ? "secondary-button" : "primary-button"}
+            disabled={hasPendingFollowRequest && !isFollowing}
+            onClick={toggleFollow}
+            type="button"
+          >
+            {followButtonLabel}
           </button>
         </div>
       ) : null}
 
-      {posts.length === 0 ? <p>No posts yet.</p> : null}
+      {!canViewPrivatePosts ? (
+        <div className="profile-private-state">
+          <span aria-hidden="true" className="profile-private-lock">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 0 1 6 0v3H9Z" />
+            </svg>
+          </span>
+          <p>This user is private, request to follow to view their posts</p>
+        </div>
+      ) : null}
+
+      {canViewPrivatePosts && posts.length === 0 ? <p>No posts yet.</p> : null}
 
       <hr aria-hidden="true" className="profile-separator" />
 
-      <div className="profile-grid">
-        {posts.map((post) => (
-          <Link aria-label="Open post details" className="profile-grid-link" href={`/p/${post.id}`} key={post.id}>
-            <img alt={post.caption ?? "Profile post"} className="profile-grid-image" src={post.image_url} />
-          </Link>
-        ))}
-      </div>
+      {canViewPrivatePosts ? (
+        <div className="profile-grid">
+          {posts.map((post) => (
+            <Link aria-label="Open post details" className="profile-grid-link" href={`/p/${post.id}`} key={post.id}>
+              <img alt={post.caption ?? "Profile post"} className="profile-grid-image" src={post.image_url} />
+            </Link>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { isMissingTableError } from "@/lib/supabase-errors";
 import type { NotificationItem, NotificationType } from "@/lib/types";
 
 type CreateNotificationInput = {
@@ -30,6 +31,12 @@ type ProfileRow = {
 type PostRow = {
   id: string;
   image_url: string | null;
+};
+
+type FollowRequestRow = {
+  requester_id: string | null;
+  requestee_id: string | null;
+  created_at: string;
 };
 
 export type ListNotificationsResult = {
@@ -83,7 +90,29 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
   }
 
   const rows = (response.data as unknown as NotificationRow[] | null) ?? [];
-  const actorIds = Array.from(new Set(rows.map((row) => row.actor_profile_id).filter(Boolean))) as string[];
+  const debugIssues: string[] = [];
+  const followRequestsResponse = await supabase
+    .from("follow_requests")
+    .select("requester_id,requestee_id,created_at")
+    .eq("requestee_id", recipientUserId);
+
+  if (followRequestsResponse.error && !isMissingTableError(followRequestsResponse.error, "follow_requests")) {
+    const message = `Follow request lookup failed: ${followRequestsResponse.error.message}`;
+    console.error(message);
+    debugIssues.push(message);
+  }
+
+  const followRequests = ((followRequestsResponse.data as FollowRequestRow[] | null) ?? []).filter(
+    (row): row is FollowRequestRow & { requester_id: string; requestee_id: string } =>
+      Boolean(row.requester_id) && Boolean(row.requestee_id),
+  );
+
+  const actorIds = Array.from(
+    new Set([
+      ...rows.map((row) => row.actor_profile_id).filter(Boolean),
+      ...followRequests.map((row) => row.requester_id),
+    ]),
+  ) as string[];
   const postIds = Array.from(new Set(rows.map((row) => row.post_id).filter(Boolean))) as string[];
 
   const [profilesResponse, postsResponse] = await Promise.all([
@@ -95,7 +124,6 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  const debugIssues: string[] = [];
   if (profilesResponse.error) {
     const message = `Profile lookup failed: ${profilesResponse.error.message}`;
     console.error(message);
@@ -140,8 +168,28 @@ export async function listNotifications(recipientUserId: string, limit = 40): Pr
     };
   });
 
+  const followRequestItems = followRequests.map((request) => {
+    const actorProfile = profileById.get(request.requester_id);
+    return {
+      id: `follow_request:${request.requester_id}:${request.requestee_id}`,
+      type: "follow_request" as NotificationType,
+      recipient_profile_id: request.requestee_id,
+      actor_profile_id: request.requester_id,
+      actor_username: actorProfile?.username ?? null,
+      actor_avatar_url: actorProfile?.avatar_url ?? null,
+      post_id: null,
+      post_image_url: null,
+      comment_id: null,
+      created_at: request.created_at,
+      read_at: null,
+    };
+  });
+
+  const mergedItems = [...items, ...followRequestItems];
+  mergedItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
   return {
-    items,
+    items: mergedItems,
     errorMessage: debugIssues.length > 0 ? debugIssues.join(" | ") : null,
   };
 }

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouse
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT } from "@/lib/events";
 import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
+import { isMissingTableError } from "@/lib/supabase-errors";
 import { supabase } from "@/lib/supabase";
 import type { NotificationItem } from "@/lib/types";
 
@@ -66,6 +67,8 @@ function getNotificationMessage(notification: NotificationItem) {
   switch (notification.type) {
     case "follow":
       return `${actor} followed you`;
+    case "follow_request":
+      return `${actor} requested to follow you`;
     case "post_like":
       return `${actor} liked your post`;
     case "comment":
@@ -100,6 +103,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsDebugMessage, setNotificationsDebugMessage] = useState<string | null>(null);
+  const [pendingFollowRequestActorIds, setPendingFollowRequestActorIds] = useState<Set<string>>(new Set());
 
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
   const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
@@ -117,15 +121,54 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
   const showHomeStartupSplash = isHomeFeed && !hasHomeInitialFeedLoaded;
 
+  const loadPendingFollowRequests = useCallback(
+    async (items: NotificationItem[]) => {
+      const actorIds = Array.from(
+        new Set(
+          items
+            .filter((notification) => notification.type === "follow_request")
+            .map((notification) => notification.actor_profile_id)
+            .filter(Boolean),
+        ),
+      ) as string[];
+
+      if (actorIds.length === 0) {
+        setPendingFollowRequestActorIds(new Set());
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("follow_requests")
+        .select("requester_id")
+        .eq("requestee_id", viewer.id)
+        .in("requester_id", actorIds);
+
+      if (error) {
+        if (!isMissingTableError(error, "follow_requests")) {
+          setNotificationsDebugMessage((current) =>
+            current ? `${current} | Follow request lookup failed: ${error.message}` : `Follow request lookup failed: ${error.message}`,
+          );
+        }
+        setPendingFollowRequestActorIds(new Set());
+        return;
+      }
+
+      const pendingIds = new Set<string>(((data ?? []) as Array<{ requester_id: string | null }>).map((row) => row.requester_id).filter(Boolean) as string[]);
+      setPendingFollowRequestActorIds(pendingIds);
+    },
+    [viewer.id],
+  );
+
   const loadNotifications = useCallback(
     async (showLoading = true) => {
       if (showLoading) setNotificationsLoading(true);
       const result = await listNotifications(viewer.id);
       setNotifications(result.items);
       setNotificationsDebugMessage(result.errorMessage);
+      await loadPendingFollowRequests(result.items);
       if (showLoading) setNotificationsLoading(false);
     },
-    [viewer.id],
+    [loadPendingFollowRequests, viewer.id],
   );
 
   const openNotifications = async () => {
@@ -147,10 +190,12 @@ export default function AppShell({ children, viewer }: AppShellProps) {
             : entry,
         ),
       );
-      await markNotificationAsRead(notification.id, viewer.id);
+      if (!notification.id.startsWith("follow_request:")) {
+        await markNotificationAsRead(notification.id, viewer.id);
+      }
     }
 
-    if (notification.type === "follow") {
+    if (notification.type === "follow" || notification.type === "follow_request") {
       let targetUsername = notification.actor_username;
 
       if (!targetUsername && notification.actor_profile_id) {
@@ -173,6 +218,55 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       router.push(`/p/${notification.post_id}`);
       setNotificationsOpen(false);
     }
+  };
+
+  const handleAcceptFollowRequest = async (notification: NotificationItem) => {
+    const requesterId = notification.actor_profile_id;
+    if (!requesterId) {
+      return;
+    }
+
+    const { error: followError } = await supabase.from("follows").upsert(
+      {
+        follower_id: requesterId,
+        following_id: viewer.id,
+      },
+      { onConflict: "follower_id,following_id" },
+    );
+
+    if (followError) {
+      setNotificationsDebugMessage(`Could not accept follow request: ${followError.message}`);
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from("follow_requests")
+      .delete()
+      .eq("requester_id", requesterId)
+      .eq("requestee_id", viewer.id);
+
+    if (deleteError && !isMissingTableError(deleteError, "follow_requests")) {
+      setNotificationsDebugMessage(`Follow request accepted, but cleanup failed: ${deleteError.message}`);
+    }
+
+    if (!notification.id.startsWith("follow_request:")) {
+      await markNotificationAsRead(notification.id, viewer.id);
+    }
+    setNotifications((current) =>
+      current.map((entry) =>
+        entry.id === notification.id
+          ? {
+              ...entry,
+              read_at: new Date().toISOString(),
+            }
+          : entry,
+      ),
+    );
+    setPendingFollowRequestActorIds((current) => {
+      const next = new Set(current);
+      next.delete(requesterId);
+      return next;
+    });
   };
 
   const handleTabClick = useCallback(
@@ -225,6 +319,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       if (!active) return;
       setNotifications(result.items);
       setNotificationsDebugMessage(result.errorMessage);
+      await loadPendingFollowRequests(result.items);
     };
 
     void loadNotificationBadge();
@@ -232,7 +327,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     return () => {
       active = false;
     };
-  }, [viewer.id]);
+  }, [loadPendingFollowRequests, viewer.id]);
 
   useEffect(() => {
     let active = true;
@@ -419,33 +514,46 @@ export default function AppShell({ children, viewer }: AppShellProps) {
             {!notificationsLoading && notifications.length > 0 ? (
               <div className="notifications-list">
                 {notifications.map((notification) => (
-                  <button
-                    className={`notification-item ${!notification.read_at ? "is-unread" : ""}`}
-                    key={notification.id}
-                    onClick={() => {
-                      void handleNotificationClick(notification);
-                    }}
-                    type="button"
-                  >
-                    {notification.type === "follow" ? (
-                      <img
-                        alt={`${notification.actor_username ?? "User"} avatar`}
-                        className="notification-avatar-thumb"
-                        src={notification.actor_avatar_url ?? PWA_ICON_URL}
-                      />
-                    ) : (
-                      <img
-                        alt="Related post thumbnail"
-                        className="notification-post-thumb"
-                        src={notification.post_image_url ?? PWA_ICON_URL}
-                      />
-                    )}
+                  <div className={`notification-item ${!notification.read_at ? "is-unread" : ""}`} key={notification.id}>
+                    <button
+                      className="notification-main-button"
+                      onClick={() => {
+                        void handleNotificationClick(notification);
+                      }}
+                      type="button"
+                    >
+                      {notification.type === "follow" || notification.type === "follow_request" ? (
+                        <img
+                          alt={`${notification.actor_username ?? "User"} avatar`}
+                          className="notification-avatar-thumb"
+                          src={notification.actor_avatar_url ?? PWA_ICON_URL}
+                        />
+                      ) : (
+                        <img
+                          alt="Related post thumbnail"
+                          className="notification-post-thumb"
+                          src={notification.post_image_url ?? PWA_ICON_URL}
+                        />
+                      )}
 
-                    <span className="notification-copy">
-                      <span>{getNotificationMessage(notification)}</span>
-                      <time dateTime={notification.created_at}>{formatNotificationDate(notification.created_at)}</time>
-                    </span>
-                  </button>
+                      <span className="notification-copy">
+                        <span>{getNotificationMessage(notification)}</span>
+                        <time dateTime={notification.created_at}>{formatNotificationDate(notification.created_at)}</time>
+                      </span>
+                    </button>
+                    {notification.type === "follow_request" && notification.actor_profile_id ? (
+                      <button
+                        className="secondary-button notification-accept-button"
+                        disabled={!pendingFollowRequestActorIds.has(notification.actor_profile_id)}
+                        onClick={() => {
+                          void handleAcceptFollowRequest(notification);
+                        }}
+                        type="button"
+                      >
+                        {pendingFollowRequestActorIds.has(notification.actor_profile_id) ? "Accept" : "Accepted"}
+                      </button>
+                    ) : null}
+                  </div>
                 ))}
               </div>
             ) : null}

@@ -222,8 +222,16 @@ p {
 }
 
 .notification-item {
-  border: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 83%, #fff);
+  padding: 0.2rem 0.25rem 0.2rem 0;
+}
+
+.notification-main-button {
+  border: 0;
   background: transparent;
   color: inherit;
   width: 100%;
@@ -237,6 +245,12 @@ p {
 
 .notification-item.is-unread {
   background: color-mix(in srgb, var(--accent) 7%, #fff);
+}
+
+.notification-accept-button {
+  padding: 0.38rem 0.6rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 .notification-avatar-thumb {
@@ -1118,6 +1132,34 @@ button {
 .profile-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.profile-private-state {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+  text-align: center;
+}
+
+.profile-private-lock {
+  width: 2rem;
+  height: 2rem;
+  color: var(--muted);
+}
+
+.profile-private-lock svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.profile-private-state p {
+  color: var(--foreground);
+  font-size: 0.92rem;
 }
 
 .profile-grid {

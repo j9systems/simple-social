@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AVATAR_UPDATED_EVENT, AVATAR_VERSION_KEY, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
-import { isMissingFullNameColumnError } from "@/lib/supabase-errors";
+import { isMissingColumnError, isMissingFullNameColumnError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import { applyTheme, readStoredTheme, THEME_STORAGE_KEY } from "@/lib/theme";
 import type { ProfileRecord } from "@/lib/types";
@@ -24,6 +24,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [supportsFullNameColumn, setSupportsFullNameColumn] = useState(true);
+  const [supportsPrivateColumn, setSupportsPrivateColumn] = useState(true);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [darkModeEnabled, setDarkModeEnabled] = useState(() => readStoredTheme() === "dark");
   const [initialUsername, setInitialUsername] = useState("");
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
@@ -53,7 +55,13 @@ export default function SettingsPage() {
       setCurrentAvatarUrl(typeof metadata.avatar_url === "string" ? metadata.avatar_url : null);
 
       const normalizeProfile = (
-        row: { id: string; username: string | null; avatar_url: string | null; full_name?: string | null } | null,
+        row: {
+          id: string;
+          username: string | null;
+          avatar_url: string | null;
+          full_name?: string | null;
+          is_private?: boolean | null;
+        } | null,
       ): ProfileRecord | null => {
         if (!row) {
           return null;
@@ -64,26 +72,39 @@ export default function SettingsPage() {
           username: row.username,
           avatar_url: row.avatar_url,
           full_name: row.full_name ?? null,
+          is_private: row.is_private ?? false,
         };
       };
 
-      const primaryProfileResponse = await supabase
-        .from("profiles")
-        .select("id,username,avatar_url,full_name")
-        .eq("id", data.user.id)
-        .maybeSingle();
-      let profileData = normalizeProfile(primaryProfileResponse.data);
-      let profileError = primaryProfileResponse.error;
+      const profileSelectAttempts = [
+        { fields: "id,username,avatar_url,full_name,is_private", hasFullName: true, hasIsPrivate: true },
+        { fields: "id,username,avatar_url,full_name", hasFullName: true, hasIsPrivate: false },
+        { fields: "id,username,avatar_url,is_private", hasFullName: false, hasIsPrivate: true },
+        { fields: "id,username,avatar_url", hasFullName: false, hasIsPrivate: false },
+      ] as const;
 
-      if (isMissingFullNameColumnError(profileError)) {
-        setSupportsFullNameColumn(false);
-        const fallbackProfileResponse = await supabase
-          .from("profiles")
-          .select("id,username,avatar_url")
-          .eq("id", data.user.id)
-          .maybeSingle();
-        profileData = normalizeProfile(fallbackProfileResponse.data);
-        profileError = fallbackProfileResponse.error;
+      let profileData: ProfileRecord | null = null;
+      let profileError: { message: string } | null = null;
+
+      for (const attempt of profileSelectAttempts) {
+        const response = await supabase.from("profiles").select(attempt.fields).eq("id", data.user.id).maybeSingle();
+        if (!response.error) {
+          profileData = normalizeProfile(response.data);
+          profileError = null;
+          setSupportsFullNameColumn(attempt.hasFullName);
+          setSupportsPrivateColumn(attempt.hasIsPrivate);
+          break;
+        }
+
+        const missingFullName = isMissingFullNameColumnError(response.error);
+        const missingIsPrivate = isMissingColumnError(response.error, "is_private");
+
+        if (!missingFullName && !missingIsPrivate) {
+          profileError = response.error;
+          break;
+        }
+
+        profileError = response.error;
       }
 
       if (!mounted) {
@@ -107,6 +128,7 @@ export default function SettingsPage() {
       setUsername(resolvedUsername);
       setInitialUsername(resolvedUsername);
       setCurrentAvatarUrl(profile?.avatar_url ?? metadataAvatarUrl);
+      setIsPrivate(profile?.is_private ?? false);
       setLoading(false);
     };
 
@@ -218,15 +240,22 @@ export default function SettingsPage() {
       avatarUrl = avatarPublicUrl.publicUrl;
     }
 
-    const profileUpdatePayload: { username: string; avatar_url: string | null; full_name?: string } = {
+    const profileUpdatePayload: { username: string; avatar_url: string | null; full_name?: string; is_private?: boolean } = {
       username: nextUsername,
       avatar_url: avatarUrl,
     };
     if (supportsFullNameColumn) {
       profileUpdatePayload.full_name = nextFullName;
     }
+    if (supportsPrivateColumn) {
+      profileUpdatePayload.is_private = isPrivate;
+    }
 
-    const selectFields = supportsFullNameColumn ? "id,username,avatar_url,full_name" : "id,username,avatar_url";
+    const selectFields = supportsFullNameColumn
+      ? supportsPrivateColumn
+        ? "id,username,avatar_url,full_name,is_private"
+        : "id,username,avatar_url,full_name"
+      : "id,username,avatar_url";
     const primaryUpdateResponse = await supabase
       .from("profiles")
       .update(profileUpdatePayload)
@@ -246,6 +275,9 @@ export default function SettingsPage() {
 
     if (primaryUpdateResponse.error && isMissingFullNameColumnError(primaryUpdateResponse.error)) {
       setSupportsFullNameColumn(false);
+      if (isMissingColumnError(primaryUpdateResponse.error, "is_private")) {
+        setSupportsPrivateColumn(false);
+      }
       const fallbackUpdateResponse = await supabase
         .from("profiles")
         .update({
@@ -258,6 +290,22 @@ export default function SettingsPage() {
       updateError = fallbackUpdateResponse.error;
       updatedProfile = fallbackUpdateResponse.data
         ? { ...fallbackUpdateResponse.data, full_name: nextFullName }
+        : null;
+    } else if (primaryUpdateResponse.error && isMissingColumnError(primaryUpdateResponse.error, "is_private")) {
+      setSupportsPrivateColumn(false);
+      const fallbackUpdateResponse = await supabase
+        .from("profiles")
+        .update({
+          username: nextUsername,
+          avatar_url: avatarUrl,
+          ...(supportsFullNameColumn ? { full_name: nextFullName } : {}),
+        })
+        .eq("id", userId)
+        .select(supportsFullNameColumn ? "id,username,avatar_url,full_name" : "id,username,avatar_url")
+        .maybeSingle();
+      updateError = fallbackUpdateResponse.error;
+      updatedProfile = fallbackUpdateResponse.data
+        ? { ...fallbackUpdateResponse.data, full_name: fallbackUpdateResponse.data.full_name ?? nextFullName }
         : null;
     }
 
@@ -370,6 +418,25 @@ export default function SettingsPage() {
           {displayedAvatarUrl ? (
             <img alt="Current avatar" className="avatar settings-avatar" src={displayedAvatarUrl} />
           ) : null}
+
+          <div className="settings-theme-row">
+            <div>
+              <p className="settings-theme-title">Private account</p>
+              <p className="settings-theme-hint">Only followers can view your posts.</p>
+            </div>
+            <label className="theme-toggle" htmlFor="private-account-toggle">
+              <input
+                checked={isPrivate}
+                id="private-account-toggle"
+                onChange={(event) => {
+                  setIsPrivate(event.target.checked);
+                }}
+                type="checkbox"
+              />
+              <span aria-hidden="true" className="theme-toggle-track" />
+              <span className="visually-hidden">Enable private account</span>
+            </label>
+          </div>
 
           <div className="settings-theme-row">
             <div>
