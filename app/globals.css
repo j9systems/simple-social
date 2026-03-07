@@ -353,7 +353,7 @@ p {
 .tab-icon {
   width: 1.45rem;
   height: 1.45rem;
-  transform: translateY(-1px);
+  transform: translateY(-4px);
   transition: transform 180ms ease;
 }
 
@@ -384,7 +384,7 @@ p {
 
 .tab-link.active .tab-icon {
   color: var(--tab-active-icon);
-  transform: translateY(-1px);
+  transform: translateY(-4px);
 }
 
 .card {
@@ -711,6 +711,31 @@ button {
   will-change: transform;
 }
 
+.feed-image-wrap {
+  position: relative;
+}
+
+.feed-double-like-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.feed-double-like-heart {
+  width: min(34vw, 5.8rem);
+  height: min(34vw, 5.8rem);
+  color: #fff;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.36));
+  opacity: 0;
+  transform: scale(0.7);
+}
+
+.feed-double-like-overlay.is-visible .feed-double-like-heart {
+  animation: feed-double-like-pop 760ms ease-out forwards;
+}
+
 .feed-actions {
   display: flex;
   align-items: center;
@@ -743,6 +768,10 @@ button {
   height: 1.45rem;
   display: block;
   flex-shrink: 0;
+}
+
+.feed-action-button.is-like-bounce svg {
+  animation: feed-like-button-bounce 420ms ease-out 1;
 }
 
 .feed-action-button.is-liked {
@@ -1331,5 +1360,36 @@ button {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes feed-double-like-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  68% {
+    opacity: 1;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+
+@keyframes feed-like-button-bounce {
+  0% {
+    transform: scale(1);
+  }
+  38% {
+    transform: scale(1.34);
+  }
+  100% {
+    transform: scale(1);
   }
 }

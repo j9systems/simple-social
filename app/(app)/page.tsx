@@ -157,6 +157,8 @@ export default function HomePage() {
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
+  const [doubleTapLikeOverlayByPostId, setDoubleTapLikeOverlayByPostId] = useState<Record<string, boolean>>({});
+  const [likeBounceByPostId, setLikeBounceByPostId] = useState<Record<string, boolean>>({});
   const [pullDistance, setPullDistance] = useState(0);
   const [isPullingFeed, setIsPullingFeed] = useState(false);
   const [isRefreshingFeed, setIsRefreshingFeed] = useState(false);
@@ -171,6 +173,8 @@ export default function HomePage() {
   const pullDistanceRef = useRef(0);
   const refreshStartedAtRef = useRef<number | null>(null);
   const hasCompletedInitialFeedLoadRef = useRef(false);
+  const doubleTapOverlayTimerByPostIdRef = useRef<Record<string, number>>({});
+  const likeBounceTimerByPostIdRef = useRef<Record<string, number>>({});
 
   const triggerFeedRefresh = useCallback((holdDistance: number = PULL_TRIGGER_DISTANCE) => {
     if (isRefreshingFeed) {
@@ -672,6 +676,29 @@ export default function HomePage() {
       return;
     }
 
+    const previousOverlayTimer = doubleTapOverlayTimerByPostIdRef.current[postId];
+    if (previousOverlayTimer) {
+      window.clearTimeout(previousOverlayTimer);
+    }
+
+    const previousBounceTimer = likeBounceTimerByPostIdRef.current[postId];
+    if (previousBounceTimer) {
+      window.clearTimeout(previousBounceTimer);
+    }
+
+    setDoubleTapLikeOverlayByPostId((current) => ({ ...current, [postId]: true }));
+    setLikeBounceByPostId((current) => ({ ...current, [postId]: true }));
+
+    doubleTapOverlayTimerByPostIdRef.current[postId] = window.setTimeout(() => {
+      setDoubleTapLikeOverlayByPostId((current) => ({ ...current, [postId]: false }));
+      delete doubleTapOverlayTimerByPostIdRef.current[postId];
+    }, 760);
+
+    likeBounceTimerByPostIdRef.current[postId] = window.setTimeout(() => {
+      setLikeBounceByPostId((current) => ({ ...current, [postId]: false }));
+      delete likeBounceTimerByPostIdRef.current[postId];
+    }, 420);
+
     void toggleLike(postId);
   }, [likePendingIds, likedPostIds, toggleLike, viewerId]);
 
@@ -1004,6 +1031,20 @@ export default function HomePage() {
     };
   }, [triggerFeedRefresh]);
 
+  useEffect(() => {
+    const overlayTimersRef = doubleTapOverlayTimerByPostIdRef;
+    const bounceTimersRef = likeBounceTimerByPostIdRef;
+
+    return () => {
+      for (const timerId of Object.values(overlayTimersRef.current)) {
+        window.clearTimeout(timerId);
+      }
+      for (const timerId of Object.values(bounceTimersRef.current)) {
+        window.clearTimeout(timerId);
+      }
+    };
+  }, []);
+
   const pullProgress = isRefreshingFeed
     ? 1
     : Math.max(0, Math.min(1, pullDistance / PULL_TRIGGER_DISTANCE));
@@ -1064,25 +1105,35 @@ export default function HomePage() {
               )}
             </header>
 
-            <img
-              alt={post.caption ?? "Post image"}
-              className="feed-image"
-              onDoubleClick={() => triggerDoubleTapLike(post.id)}
-              onTouchCancel={(event) => handleImagePinchEnd(post.id, event)}
-              onTouchEnd={(event) => {
-                handleImageTapEnd(post.id, event);
-                handleImagePinchEnd(post.id, event);
-              }}
-              onTouchMove={(event) => handleImagePinchMove(post.id, event)}
-              onTouchStart={(event) => handleImagePinchStart(post.id, event)}
-              src={post.image_url}
-              style={{ transform: `scale(${pinchScaleByPostId[post.id] ?? IMAGE_ZOOM_MIN_SCALE})` }}
-            />
+            <div className="feed-image-wrap">
+              <img
+                alt={post.caption ?? "Post image"}
+                className="feed-image"
+                onDoubleClick={() => triggerDoubleTapLike(post.id)}
+                onTouchCancel={(event) => handleImagePinchEnd(post.id, event)}
+                onTouchEnd={(event) => {
+                  handleImageTapEnd(post.id, event);
+                  handleImagePinchEnd(post.id, event);
+                }}
+                onTouchMove={(event) => handleImagePinchMove(post.id, event)}
+                onTouchStart={(event) => handleImagePinchStart(post.id, event)}
+                src={post.image_url}
+                style={{ transform: `scale(${pinchScaleByPostId[post.id] ?? IMAGE_ZOOM_MIN_SCALE})` }}
+              />
+              <span
+                aria-hidden="true"
+                className={`feed-double-like-overlay ${doubleTapLikeOverlayByPostId[post.id] ? "is-visible" : ""}`}
+              >
+                <span className="feed-double-like-heart">
+                  <HeartIcon filled />
+                </span>
+              </span>
+            </div>
 
             <div className="feed-actions">
               <button
                 aria-label={liked ? "Unlike post" : "Like post"}
-                className={`feed-action-button ${liked ? "is-liked" : ""}`}
+                className={`feed-action-button ${liked ? "is-liked" : ""} ${likeBounceByPostId[post.id] ? "is-like-bounce" : ""}`}
                 disabled={likePending}
                 onClick={() => toggleLike(post.id)}
                 type="button"
@@ -1118,7 +1169,9 @@ export default function HomePage() {
     handleImagePinchEnd,
     handleImagePinchMove,
     handleImagePinchStart,
+    likeBounceByPostId,
     likePendingIds,
+    doubleTapLikeOverlayByPostId,
     likedPostIds,
     loading,
     openComments,

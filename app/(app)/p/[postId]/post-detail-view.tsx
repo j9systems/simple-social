@@ -169,6 +169,8 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
   const [loading, setLoading] = useState(hasSupabaseEnv);
   const [error, setError] = useState<string | null>(null);
   const [pinchScale, setPinchScale] = useState(IMAGE_ZOOM_MIN_SCALE);
+  const [showDoubleTapLikeOverlay, setShowDoubleTapLikeOverlay] = useState(false);
+  const [showLikeBounce, setShowLikeBounce] = useState(false);
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const pinchStartDistanceRef = useRef(0);
@@ -177,6 +179,8 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
   const ownerMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const commentLongPressTimeoutRef = useRef<number | null>(null);
   const lastTapRef = useRef<TapSnapshot | null>(null);
+  const doubleTapLikeOverlayTimerRef = useRef<number | null>(null);
+  const likeBounceTimerRef = useRef<number | null>(null);
 
   const loadComments = useCallback(async () => {
     if (!viewerId) {
@@ -597,6 +601,26 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
       return;
     }
 
+    if (doubleTapLikeOverlayTimerRef.current !== null) {
+      window.clearTimeout(doubleTapLikeOverlayTimerRef.current);
+    }
+    if (likeBounceTimerRef.current !== null) {
+      window.clearTimeout(likeBounceTimerRef.current);
+    }
+
+    setShowDoubleTapLikeOverlay(true);
+    setShowLikeBounce(true);
+
+    doubleTapLikeOverlayTimerRef.current = window.setTimeout(() => {
+      setShowDoubleTapLikeOverlay(false);
+      doubleTapLikeOverlayTimerRef.current = null;
+    }, 760);
+
+    likeBounceTimerRef.current = window.setTimeout(() => {
+      setShowLikeBounce(false);
+      likeBounceTimerRef.current = null;
+    }, 420);
+
     void toggleLike();
   }, [likePending, liked, post, toggleLike, viewerId]);
 
@@ -795,6 +819,12 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
   useEffect(() => {
     return () => {
       clearCommentLongPressTimeout();
+      if (doubleTapLikeOverlayTimerRef.current !== null) {
+        window.clearTimeout(doubleTapLikeOverlayTimerRef.current);
+      }
+      if (likeBounceTimerRef.current !== null) {
+        window.clearTimeout(likeBounceTimerRef.current);
+      }
     };
   }, [clearCommentLongPressTimeout]);
 
@@ -917,25 +947,32 @@ export default function PostDetailView({ postId }: PostDetailViewProps) {
             ) : null}
           </header>
 
-          <img
-            alt={post.caption ?? "Post image"}
-            className="feed-image"
-            onDoubleClick={triggerDoubleTapLike}
-            onTouchCancel={handleImagePinchEnd}
-            onTouchEnd={(event) => {
-              handleImageTapEnd(event);
-              handleImagePinchEnd(event);
-            }}
-            onTouchMove={handleImagePinchMove}
-            onTouchStart={handleImagePinchStart}
-            src={post.image_url}
-            style={{ transform: `scale(${pinchScale})` }}
-          />
+          <div className="feed-image-wrap">
+            <img
+              alt={post.caption ?? "Post image"}
+              className="feed-image"
+              onDoubleClick={triggerDoubleTapLike}
+              onTouchCancel={handleImagePinchEnd}
+              onTouchEnd={(event) => {
+                handleImageTapEnd(event);
+                handleImagePinchEnd(event);
+              }}
+              onTouchMove={handleImagePinchMove}
+              onTouchStart={handleImagePinchStart}
+              src={post.image_url}
+              style={{ transform: `scale(${pinchScale})` }}
+            />
+            <span aria-hidden="true" className={`feed-double-like-overlay ${showDoubleTapLikeOverlay ? "is-visible" : ""}`}>
+              <span className="feed-double-like-heart">
+                <HeartIcon filled />
+              </span>
+            </span>
+          </div>
 
           <div className="feed-actions">
             <button
               aria-label={liked ? "Unlike post" : "Like post"}
-              className={`feed-action-button ${liked ? "is-liked" : ""}`}
+              className={`feed-action-button ${liked ? "is-liked" : ""} ${showLikeBounce ? "is-like-bounce" : ""}`}
               disabled={likePending}
               onClick={() => {
                 void toggleLike();
