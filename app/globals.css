@@ -1298,6 +1298,10 @@ button {
 }
 
 @media (max-width: 768px) {
+  :root {
+    --tabbar-height: 72px;
+  }
+
   .home-page .feed-list {
     margin-left: -1.25rem;
     margin-right: -1.25rem;

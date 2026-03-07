@@ -14,6 +14,7 @@ type ConnectionRow = {
   username: string | null;
   avatar_url: string | null;
   full_name?: string | null;
+  name?: string | null;
 };
 
 type ConnectionsViewProps = {
@@ -26,7 +27,15 @@ function buildDisplayName(profile: ConnectionRow) {
   if (fullName) {
     return fullName;
   }
+  const name = profile.name?.trim();
+  if (name) {
+    return name;
+  }
   return profile.username ?? "User";
+}
+
+function isMissingNameColumnError(message: string, columnName: "full_name" | "name") {
+  return message.includes(columnName) && (message.includes("column") || message.includes("schema cache"));
 }
 
 export default function ConnectionsView({ mode, username }: ConnectionsViewProps) {
@@ -77,12 +86,15 @@ export default function ConnectionsView({ mode, username }: ConnectionsViewProps
         return;
       }
 
-      const profileQuery = supabase.from("profiles").select("id,username,avatar_url,full_name");
+      const profileQuery = supabase.from("profiles").select("id,username,avatar_url,full_name,name");
       let profileResponse = username
         ? await profileQuery.eq("username", username).maybeSingle()
         : await profileQuery.eq("id", userData.user.id).maybeSingle();
 
-      if (isMissingFullNameColumnError(profileResponse.error)) {
+      if (
+        isMissingFullNameColumnError(profileResponse.error) ||
+        isMissingNameColumnError((profileResponse.error?.message ?? "").toLowerCase(), "name")
+      ) {
         const fallbackProfileQuery = supabase.from("profiles").select("id,username,avatar_url");
         profileResponse = username
           ? await fallbackProfileQuery.eq("username", username).maybeSingle()
@@ -135,10 +147,13 @@ export default function ConnectionsView({ mode, username }: ConnectionsViewProps
       let profilesData: ConnectionRow[] | null = null;
       const profilesResponse = await supabase
         .from("profiles")
-        .select("id,username,avatar_url,full_name")
+        .select("id,username,avatar_url,full_name,name")
         .in("id", connectionIds);
 
-      if (isMissingFullNameColumnError(profilesResponse.error)) {
+      if (
+        isMissingFullNameColumnError(profilesResponse.error) ||
+        isMissingNameColumnError((profilesResponse.error?.message ?? "").toLowerCase(), "name")
+      ) {
         const fallbackProfilesResponse = await supabase
           .from("profiles")
           .select("id,username,avatar_url")
