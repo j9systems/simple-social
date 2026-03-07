@@ -49,6 +49,10 @@ const tabs = [
   },
 ];
 
+function isModifiedEvent(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean }) {
+  return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+}
+
 function formatNotificationDate(isoDate: string) {
   return new Date(isoDate).toLocaleString(undefined, {
     dateStyle: "short",
@@ -173,6 +177,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   const handleTabClick = useCallback(
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
+      if (isModifiedEvent(event) || event.button !== 0) return;
       if (href !== "/" || pathname !== "/") return;
       if (window.scrollY <= 0) return;
 
@@ -183,37 +188,33 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     [pathname],
   );
 
+  const handleTabPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLAnchorElement>, href: string) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (isModifiedEvent(event)) return;
+      if (href === pathname) return;
+
+      event.preventDefault();
+      router.push(href);
+    },
+    [pathname, router],
+  );
+
+  const handleTabTouchStart = useCallback(
+    (event: React.TouchEvent<HTMLAnchorElement>, href: string) => {
+      if (isModifiedEvent(event)) return;
+      if (href === pathname) return;
+
+      event.preventDefault();
+      router.push(href);
+    },
+    [pathname, router],
+  );
+
   useEffect(() => {
-    type IdleCallbackHandle = number;
-    type IdleCallbackFn = (callback: () => void) => IdleCallbackHandle;
-    type CancelIdleCallbackFn = (handle: IdleCallbackHandle) => void;
-
-    const warmTabs = () => {
-      router.prefetch("/");
-      router.prefetch("/profile");
-    };
-
-    const maybeWindow = window as Window & {
-      requestIdleCallback?: IdleCallbackFn;
-      cancelIdleCallback?: CancelIdleCallbackFn;
-    };
-
-    if (typeof maybeWindow.requestIdleCallback === "function") {
-      const handle = maybeWindow.requestIdleCallback(() => {
-        warmTabs();
-      });
-
-      return () => {
-        if (typeof maybeWindow.cancelIdleCallback === "function") {
-          maybeWindow.cancelIdleCallback(handle);
-        }
-      };
+    for (const tab of tabs) {
+      router.prefetch(tab.href);
     }
-
-    const timeout = window.setTimeout(warmTabs, 160);
-    return () => {
-      window.clearTimeout(timeout);
-    };
   }, [router]);
 
   useEffect(() => {
@@ -481,9 +482,16 @@ export default function AppShell({ children, viewer }: AppShellProps) {
                 className={pathname === tab.href || pathname.startsWith(`${tab.href}/`) ? "tab-link active" : "tab-link"}
                 href={tab.href}
                 key={tab.href}
+                onPointerDown={(event) => {
+                  handleTabPointerDown(event, tab.href);
+                }}
                 onClick={(event) => {
                   handleTabClick(event, tab.href);
                 }}
+                onTouchStart={(event) => {
+                  handleTabTouchStart(event, tab.href);
+                }}
+                prefetch
               >
                 <span className="tab-icon">
                   {tab.href === "/profile" ? (
