@@ -136,6 +136,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const keyboardResetTimerRef = useRef<number | null>(null);
 
   const lastScrollYRef = useRef(0);
+  const scrollYBeforeFocusRef = useRef(0);
   const navMountLoggedRef = useRef(false);
   const firstPaintLoggedRef = useRef(false);
 
@@ -449,6 +450,10 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     };
 
     const handleFocusIn = () => {
+      // Save scroll position before keyboard opens. On iOS, the browser can silently
+      // scroll the page when focusing an input, which causes position:fixed elements
+      // to appear elevated. We restore this on focus-out.
+      scrollYBeforeFocusRef.current = window.scrollY;
       syncOnNextFrame();
       if (keyboardResetTimerRef.current !== null) {
         window.clearTimeout(keyboardResetTimerRef.current);
@@ -457,6 +462,14 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     };
 
     const handleFocusOut = () => {
+      // Restore scroll position after keyboard closes. Do this on the next frame
+      // (while the keyboard is still visible / animating down) so the user never
+      // sees the page jump. Only restore if focus didn't move to another input.
+      window.requestAnimationFrame(() => {
+        if (!isTextInputElement(document.activeElement)) {
+          window.scrollTo(0, scrollYBeforeFocusRef.current);
+        }
+      });
       syncOnNextFrame();
       if (keyboardResetTimerRef.current !== null) {
         window.clearTimeout(keyboardResetTimerRef.current);
