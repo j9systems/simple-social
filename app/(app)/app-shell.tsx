@@ -174,11 +174,10 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       return;
     }
 
-    // Keyboard is not open: show the tab bar and compensate for any transient
-    // viewport gap iOS reports during the keyboard dismiss animation
+    // Keyboard is not open: show the tab bar at the same position as other tabs
     setIsKeyboardVisible(false);
-    setViewportBottomInset(getVisualViewportBottomInset());
-  }, [isSearchRoute, resetViewportBottomInset, setViewportBottomInset]);
+    resetViewportBottomInset();
+  }, [isSearchRoute, resetViewportBottomInset]);
 
   const dismissSoftKeyboard = useCallback(() => {
     const activeElement = document.activeElement;
