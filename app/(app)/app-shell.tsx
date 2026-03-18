@@ -127,6 +127,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const [pendingFollowRequestActorIds, setPendingFollowRequestActorIds] = useState<Set<string>>(new Set());
 
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [hasHomeInitialFeedLoaded, setHasHomeInitialFeedLoaded] = useState(homeInitialFeedReadyOnWindow);
@@ -160,29 +161,33 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const syncViewportBottomInset = useCallback(() => {
     if (document.hidden || !isSearchRoute) {
       resetViewportBottomInset();
+      setIsKeyboardVisible(false);
       return;
     }
 
     const activeElement = document.activeElement;
     if (!isTextInputElement(activeElement)) {
       resetViewportBottomInset();
+      setIsKeyboardVisible(false);
       return;
     }
 
     const nextInset = getVisualViewportBottomInset();
     if (nextInset < KEYBOARD_LIFT_MIN_PX) {
       resetViewportBottomInset();
+      setIsKeyboardVisible(false);
       return;
     }
 
-    setViewportBottomInset(nextInset);
-  }, [isSearchRoute, resetViewportBottomInset, setViewportBottomInset]);
+    setIsKeyboardVisible(true);
+  }, [isSearchRoute, resetViewportBottomInset]);
 
   const dismissSoftKeyboard = useCallback(() => {
     const activeElement = document.activeElement;
     if (!isTextInputElement(activeElement)) return;
     (activeElement as HTMLElement).blur();
     resetViewportBottomInset();
+    setIsKeyboardVisible(false);
   }, [resetViewportBottomInset]);
 
   const loadPendingFollowRequests = useCallback(
@@ -739,7 +744,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       ) : null}
 
       {!showHomeStartupSplash ? (
-        <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
+        <nav aria-label="Primary" className={`tab-bar${isKeyboardVisible ? " is-keyboard-hidden" : ""}`} ref={tabBarRef}>
           <div className="tab-bar-inner">
             {tabs.map((tab) => (
               <Link

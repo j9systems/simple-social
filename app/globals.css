@@ -317,6 +317,12 @@ p {
   transition: transform 180ms ease, opacity 160ms ease;
 }
 
+.tab-bar.is-keyboard-hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
 .tab-bar-inner {
   width: min(760px, 100%);
   margin: 0 auto;
