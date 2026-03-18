@@ -56,9 +56,13 @@ html {
   background: var(--background);
 }
 
-html,
-body {
+html {
   height: 100%;
+  margin: 0;
+}
+
+body {
+  height: 100dvh;
   margin: 0;
 }
 
@@ -77,7 +81,7 @@ p {
   min-height: 0;
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
