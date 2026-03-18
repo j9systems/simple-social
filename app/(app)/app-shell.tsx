@@ -145,7 +145,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   const setViewportBottomInset = useCallback((value: number) => {
     const root = document.documentElement;
-    const next = `${Math.max(0, Math.round(value))}px`;
+    const next = `${Math.round(value)}px`;
     if (root.style.getPropertyValue(VIEWPORT_BOTTOM_CSS_VAR) === next) {
       return;
     }
@@ -157,15 +157,28 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   }, [setViewportBottomInset]);
 
   const syncViewportBottomInset = useCallback(() => {
-    resetViewportBottomInset();
-  }, [resetViewportBottomInset]);
+    // On iOS 15+, position:fixed is relative to the visual viewport, not the
+    // layout viewport. This means bottom:0 sits at the visual viewport bottom,
+    // which is ABOVE the keyboard when it's open, and may not reach the physical
+    // screen bottom after keyboard interactions (leaving a visible gap).
+    //
+    // Setting --vv-bottom = -(visual viewport inset) moves the bar DOWN by exactly
+    // the gap between the visual viewport bottom and the physical screen bottom.
+    // This anchors the bar to the physical screen bottom in all cases:
+    //   - keyboard open: inset = keyboard height → bar is behind the keyboard ✓
+    //   - keyboard closed, viewport fully restored: inset = 0 → bottom: 0 ✓
+    //   - keyboard closed, viewport partially restored: inset = gap → bar covers gap ✓
+    const inset = document.hidden ? 0 : getVisualViewportBottomInset();
+    setViewportBottomInset(-inset);
+  }, [setViewportBottomInset]);
 
   const dismissSoftKeyboard = useCallback(() => {
     const activeElement = document.activeElement;
     if (!isTextInputElement(activeElement)) return;
     (activeElement as HTMLElement).blur();
-    resetViewportBottomInset();
-  }, [resetViewportBottomInset]);
+    // focusout fires synchronously from blur(), which triggers handleFocusOut →
+    // syncViewportBottomInset. No need to reset --vv-bottom manually here.
+  }, []);
 
   const loadPendingFollowRequests = useCallback(
     async (items: NotificationItem[]) => {
