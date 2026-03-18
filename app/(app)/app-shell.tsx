@@ -166,21 +166,19 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     }
 
     const activeElement = document.activeElement;
-    if (!isTextInputElement(activeElement)) {
+
+    // Text input is focused — keyboard is open or opening: hide the tab bar
+    if (isTextInputElement(activeElement)) {
       resetViewportBottomInset();
-      setIsKeyboardVisible(false);
+      setIsKeyboardVisible(true);
       return;
     }
 
-    const nextInset = getVisualViewportBottomInset();
-    if (nextInset < KEYBOARD_LIFT_MIN_PX) {
-      resetViewportBottomInset();
-      setIsKeyboardVisible(false);
-      return;
-    }
-
-    setIsKeyboardVisible(true);
-  }, [isSearchRoute, resetViewportBottomInset]);
+    // Keyboard is not open: show the tab bar and compensate for any transient
+    // viewport gap iOS reports during the keyboard dismiss animation
+    setIsKeyboardVisible(false);
+    setViewportBottomInset(getVisualViewportBottomInset());
+  }, [isSearchRoute, resetViewportBottomInset, setViewportBottomInset]);
 
   const dismissSoftKeyboard = useCallback(() => {
     const activeElement = document.activeElement;
