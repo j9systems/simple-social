@@ -15,7 +15,6 @@ const PWA_ICON_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772878441/simpleSocial_Logo_s9xbr8.png";
 const WORDMARK_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg";
-const VIEWPORT_BOTTOM_CSS_VAR = "--vv-bottom";
 
 const tabs = [
   {
@@ -66,13 +65,6 @@ function isTextInputElement(element: Element | null) {
   return false;
 }
 
-function getVisualViewportBottomInset() {
-  if (typeof window === "undefined" || !window.visualViewport) return 0;
-  const viewport = window.visualViewport;
-  const inset = window.innerHeight - (viewport.height + viewport.offsetTop);
-  if (!Number.isFinite(inset)) return 0;
-  return Math.max(0, Math.round(inset));
-}
 
 function formatNotificationDate(isoDate: string) {
   return new Date(isoDate).toLocaleString(undefined, {
@@ -136,48 +128,16 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const keyboardResetTimerRef = useRef<number | null>(null);
 
   const lastScrollYRef = useRef(0);
-  const scrollYBeforeFocusRef = useRef(0);
   const navMountLoggedRef = useRef(false);
   const firstPaintLoggedRef = useRef(false);
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
   const showHomeStartupSplash = isHomeFeed && !hasHomeInitialFeedLoaded;
 
-  const setViewportBottomInset = useCallback((value: number) => {
-    const root = document.documentElement;
-    const next = `${Math.round(value)}px`;
-    if (root.style.getPropertyValue(VIEWPORT_BOTTOM_CSS_VAR) === next) {
-      return;
-    }
-    root.style.setProperty(VIEWPORT_BOTTOM_CSS_VAR, next);
-  }, []);
-
-  const resetViewportBottomInset = useCallback(() => {
-    setViewportBottomInset(0);
-  }, [setViewportBottomInset]);
-
-  const syncViewportBottomInset = useCallback(() => {
-    // On iOS 15+, position:fixed is relative to the visual viewport, not the
-    // layout viewport. This means bottom:0 sits at the visual viewport bottom,
-    // which is ABOVE the keyboard when it's open, and may not reach the physical
-    // screen bottom after keyboard interactions (leaving a visible gap).
-    //
-    // Setting --vv-bottom = -(visual viewport inset) moves the bar DOWN by exactly
-    // the gap between the visual viewport bottom and the physical screen bottom.
-    // This anchors the bar to the physical screen bottom in all cases:
-    //   - keyboard open: inset = keyboard height → bar is behind the keyboard ✓
-    //   - keyboard closed, viewport fully restored: inset = 0 → bottom: 0 ✓
-    //   - keyboard closed, viewport partially restored: inset = gap → bar covers gap ✓
-    const inset = document.hidden ? 0 : getVisualViewportBottomInset();
-    setViewportBottomInset(-inset);
-  }, [setViewportBottomInset]);
-
   const dismissSoftKeyboard = useCallback(() => {
     const activeElement = document.activeElement;
     if (!isTextInputElement(activeElement)) return;
     (activeElement as HTMLElement).blur();
-    // focusout fires synchronously from blur(), which triggers handleFocusOut →
-    // syncViewportBottomInset. No need to reset --vv-bottom manually here.
   }, []);
 
   const loadPendingFollowRequests = useCallback(
@@ -456,95 +416,43 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   }, [dismissSoftKeyboard, pathname]);
 
   useEffect(() => {
-    const syncOnNextFrame = () => {
-      window.requestAnimationFrame(() => {
-        syncViewportBottomInset();
-      });
-    };
-
     const handleFocusIn = () => {
-      // Save scroll position before keyboard opens. On iOS, the browser can silently
-      // scroll the page when focusing an input, which causes position:fixed elements
-      // to appear elevated. We restore this on focus-out.
-      scrollYBeforeFocusRef.current = window.scrollY;
-      syncOnNextFrame();
+      if (!isTextInputElement(document.activeElement)) return;
       if (keyboardResetTimerRef.current !== null) {
         window.clearTimeout(keyboardResetTimerRef.current);
         keyboardResetTimerRef.current = null;
       }
+      document.documentElement.classList.add("keyboard-open");
     };
 
     const handleFocusOut = () => {
-      // Restore scroll position after keyboard closes. Do this on the next frame
-      // (while the keyboard is still visible / animating down) so the user never
-      // sees the page jump. Only restore if focus didn't move to another input.
-      window.requestAnimationFrame(() => {
-        if (!isTextInputElement(document.activeElement)) {
-          window.scrollTo(0, scrollYBeforeFocusRef.current);
-        }
-      });
-      syncOnNextFrame();
       if (keyboardResetTimerRef.current !== null) {
         window.clearTimeout(keyboardResetTimerRef.current);
       }
+      // 100ms delay: lets focus settle on a new element (if the user moved
+      // between inputs), and times the bar's 200ms slide-in to finish just as
+      // the iOS keyboard animation (~300ms) completes.
       keyboardResetTimerRef.current = window.setTimeout(() => {
-        syncViewportBottomInset();
-      }, 160);
-    };
-
-    const handleViewportUpdate = () => {
-      syncOnNextFrame();
-    };
-
-    const handleVisibilityOrBlur = () => {
-      if (document.hidden) {
-        resetViewportBottomInset();
-        return;
-      }
-      syncViewportBottomInset();
+        if (!isTextInputElement(document.activeElement)) {
+          document.documentElement.classList.remove("keyboard-open");
+        }
+        keyboardResetTimerRef.current = null;
+      }, 100);
     };
 
     document.addEventListener("focusin", handleFocusIn, true);
     document.addEventListener("focusout", handleFocusOut, true);
-    document.addEventListener("visibilitychange", handleVisibilityOrBlur);
-    window.addEventListener("blur", handleVisibilityOrBlur);
-    window.addEventListener("resize", handleViewportUpdate, { passive: true });
-    window.addEventListener("pageshow", handleVisibilityOrBlur);
-    window.addEventListener("pagehide", handleVisibilityOrBlur);
-
-    const visualViewport = window.visualViewport;
-    visualViewport?.addEventListener("resize", handleViewportUpdate);
-    visualViewport?.addEventListener("scroll", handleViewportUpdate);
-
-    syncViewportBottomInset();
 
     return () => {
       if (keyboardResetTimerRef.current !== null) {
         window.clearTimeout(keyboardResetTimerRef.current);
         keyboardResetTimerRef.current = null;
       }
+      document.documentElement.classList.remove("keyboard-open");
       document.removeEventListener("focusin", handleFocusIn, true);
       document.removeEventListener("focusout", handleFocusOut, true);
-      document.removeEventListener("visibilitychange", handleVisibilityOrBlur);
-      window.removeEventListener("blur", handleVisibilityOrBlur);
-      window.removeEventListener("resize", handleViewportUpdate);
-      window.removeEventListener("pageshow", handleVisibilityOrBlur);
-      window.removeEventListener("pagehide", handleVisibilityOrBlur);
-      visualViewport?.removeEventListener("resize", handleViewportUpdate);
-      visualViewport?.removeEventListener("scroll", handleViewportUpdate);
-      resetViewportBottomInset();
     };
-  }, [resetViewportBottomInset, syncViewportBottomInset]);
-
-  useEffect(() => {
-    resetViewportBottomInset();
-    const frame = window.requestAnimationFrame(() => {
-      syncViewportBottomInset();
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, [pathname, resetViewportBottomInset, syncViewportBottomInset]);
+  }, []);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {

@@ -12,7 +12,6 @@
   --tabbar-bg: #ffffff;
   --tabbar-height: 77px;
   --tabbar-total-height: var(--tabbar-height, 64px);
-  --vv-bottom: 0px;
   --feed-divider: color-mix(in srgb, var(--line) 36%, var(--background));
   scroll-padding-top: calc(var(--tabbar-height, 64px) + env(safe-area-inset-top));
 }
@@ -295,7 +294,7 @@ p {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: var(--vv-bottom, 0px);
+  bottom: 0;
 
   /* Visuals */
   border-top: 1px solid var(--line);
@@ -314,7 +313,13 @@ p {
   /* Prevent layout reflow from internal flex children */
   display: flex;
   align-items: stretch;
-  transition: transform 180ms ease, opacity 160ms ease;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+html.keyboard-open .tab-bar {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .tab-bar-inner {
