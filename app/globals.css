@@ -314,23 +314,7 @@ p {
   /* Prevent layout reflow from internal flex children */
   display: flex;
   align-items: stretch;
-  transition: bottom 220ms ease, transform 180ms ease, opacity 160ms ease;
-}
-
-.tab-bar.is-keyboard-hidden {
-  bottom: -120px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.tab-bar::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -50px;
-  height: 50px;
-  background: inherit;
+  transition: transform 180ms ease, opacity 160ms ease;
 }
 
 .tab-bar-inner {
