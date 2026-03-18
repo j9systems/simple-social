@@ -315,11 +315,6 @@ p {
   display: flex;
   align-items: stretch;
   transition: transform 180ms ease, opacity 160ms ease;
-
-  /* Promote to its own GPU compositing layer. On iOS Safari, a position:sticky
-     sibling with backdrop-filter can corrupt position:fixed rendering across
-     keyboard open/close cycles. Isolating the tab bar prevents this. */
-  transform: translateZ(0);
 }
 
 .tab-bar-inner {
