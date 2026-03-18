@@ -1,11 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
-import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT } from "@/lib/events";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { HOME_INITIAL_FEED_READY_EVENT } from "@/lib/events";
 import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
 import { isMissingTableError } from "@/lib/supabase-errors";
 import { supabase } from "@/lib/supabase";
@@ -15,44 +13,6 @@ const PWA_ICON_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772878441/simpleSocial_Logo_s9xbr8.png";
 const WORDMARK_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg";
-
-const tabs = [
-  {
-    href: "/",
-    label: "Home",
-    icon: (
-      <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="M3 10.5 12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6h-5v6h-5A1.5 1.5 0 0 1 3 19.5v-9Z" />
-      </svg>
-    ),
-  },
-  {
-    href: "/search",
-    label: "Search",
-    icon: (
-      <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="M11 4a7 7 0 1 0 4.4 12.5l4 4 1.4-1.4-4-4A7 7 0 0 0 11 4Zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z" />
-      </svg>
-    ),
-  },
-  {
-    href: "/upload",
-    label: "Upload",
-    icon: (
-      <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z" />
-      </svg>
-    ),
-  },
-  {
-    href: "/profile",
-    label: "Profile",
-  },
-];
-
-function isModifiedEvent(event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean }) {
-  return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-}
 
 function isTextInputElement(element: Element | null) {
   if (!element || !(element instanceof HTMLElement)) return false;
@@ -118,17 +78,14 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const [pendingFollowRequestActorIds, setPendingFollowRequestActorIds] = useState<Set<string>>(new Set());
 
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
-  const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
-  const [avatarVersion, setAvatarVersion] = useState(0);
+
   const [hasHomeInitialFeedLoaded, setHasHomeInitialFeedLoaded] = useState(homeInitialFeedReadyOnWindow);
 
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
-  const tabBarRef = useRef<HTMLElement | null>(null);
   const pageWrapRef = useRef<HTMLElement | null>(null);
 
   const lastScrollYRef = useRef(0);
-  const navMountLoggedRef = useRef(false);
   const firstPaintLoggedRef = useRef(false);
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
@@ -295,50 +252,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     });
   };
 
-  const handleTabClick = useCallback(
-    (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
-      if (isModifiedEvent(event) || event.button !== 0) return;
-      if (href !== "/" || pathname !== "/") return;
-      if ((pageWrapRef.current?.scrollTop ?? 0) <= 0) return;
-
-      event.preventDefault();
-      setIsTopBarHidden(false);
-      window.dispatchEvent(new Event(HOME_TAB_RESELECT_EVENT));
-    },
-    [pathname],
-  );
-
-  const handleTabPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLAnchorElement>, href: string) => {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      if (isModifiedEvent(event)) return;
-      if (href === pathname) return;
-
-      event.preventDefault();
-      dismissSoftKeyboard();
-      router.push(href);
-    },
-    [dismissSoftKeyboard, pathname, router],
-  );
-
-  const handleTabTouchStart = useCallback(
-    (event: React.TouchEvent<HTMLAnchorElement>, href: string) => {
-      if (isModifiedEvent(event)) return;
-      if (href === pathname) return;
-
-      event.preventDefault();
-      dismissSoftKeyboard();
-      router.push(href);
-    },
-    [dismissSoftKeyboard, pathname, router],
-  );
-
-  useEffect(() => {
-    for (const tab of tabs) {
-      router.prefetch(tab.href);
-    }
-  }, [router]);
-
   useEffect(() => {
     let active = true;
 
@@ -356,37 +269,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       active = false;
     };
   }, [loadPendingFollowRequests, viewer.id]);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadViewerAvatar = async () => {
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("avatar_url")
-        .eq("id", viewer.id)
-        .maybeSingle();
-
-      if (!active) return;
-
-      const metadata = viewer.metadata ?? {};
-      const metadataAvatarUrl = typeof metadata.avatar_url === "string" ? metadata.avatar_url : null;
-      setViewerTabAvatarUrl((profileData?.avatar_url as string | null) ?? metadataAvatarUrl);
-    };
-
-    const syncAvatarVersion = () => {
-      setAvatarVersion(readAvatarVersion());
-      void loadViewerAvatar();
-    };
-
-    syncAvatarVersion();
-    window.addEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
-
-    return () => {
-      active = false;
-      window.removeEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
-    };
-  }, [viewer.id, viewer.metadata]);
 
   useEffect(() => {
     if (!notificationsOpen) return;
@@ -482,19 +364,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
     observer.observe({ type: "paint", buffered: true });
     return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!tabBarRef.current || navMountLoggedRef.current) return;
-
-    navMountLoggedRef.current = true;
-    const navTs = performance.now();
-    const themeTs = (window as Window & { __ssThemeSetTs?: number }).__ssThemeSetTs;
-
-    console.log("[perf] nav first render @", navTs.toFixed(2) + "ms");
-    if (typeof themeTs === "number") {
-      console.log("[perf] nav rendered after theme by", (navTs - themeTs).toFixed(2) + "ms");
-    }
   }, []);
 
   return (
@@ -618,42 +487,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
         </div>
       ) : null}
 
-      {!showHomeStartupSplash ? (
-        <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
-          <div className="tab-bar-inner">
-            {tabs.map((tab) => (
-              <Link
-                className={pathname === tab.href || pathname.startsWith(`${tab.href}/`) ? "tab-link active" : "tab-link"}
-                href={tab.href}
-                key={tab.href}
-                onPointerDown={(event) => {
-                  handleTabPointerDown(event, tab.href);
-                }}
-                onClick={(event) => {
-                  handleTabClick(event, tab.href);
-                }}
-                onTouchStart={(event) => {
-                  handleTabTouchStart(event, tab.href);
-                }}
-                prefetch
-              >
-                <span className="tab-icon">
-                  {tab.href === "/profile" ? (
-                    <img
-                      alt="Your profile"
-                      className="tab-profile-avatar"
-                      src={buildAvatarSrc(viewerTabAvatarUrl, avatarVersion)}
-                    />
-                  ) : (
-                    tab.icon
-                  )}
-                </span>
-                <span className="tab-label">{tab.label}</span>
-              </Link>
-            ))}
-          </div>
-        </nav>
-      ) : null}
     </div>
   );
 }
