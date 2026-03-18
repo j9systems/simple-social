@@ -323,6 +323,16 @@ p {
   pointer-events: none;
 }
 
+.tab-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -50px;
+  height: 50px;
+  background: inherit;
+}
+
 .tab-bar-inner {
   width: min(760px, 100%);
   margin: 0 auto;
