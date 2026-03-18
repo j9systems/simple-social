@@ -125,7 +125,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
   const tabBarRef = useRef<HTMLElement | null>(null);
-  const keyboardResetTimerRef = useRef<number | null>(null);
+  const pageWrapRef = useRef<HTMLElement | null>(null);
 
   const lastScrollYRef = useRef(0);
   const navMountLoggedRef = useRef(false);
@@ -299,7 +299,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
       if (isModifiedEvent(event) || event.button !== 0) return;
       if (href !== "/" || pathname !== "/") return;
-      if (window.scrollY <= 0) return;
+      if ((pageWrapRef.current?.scrollTop ?? 0) <= 0) return;
 
       event.preventDefault();
       setIsTopBarHidden(false);
@@ -416,48 +416,9 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   }, [dismissSoftKeyboard, pathname]);
 
   useEffect(() => {
-    const handleFocusIn = () => {
-      if (!isTextInputElement(document.activeElement)) return;
-      if (keyboardResetTimerRef.current !== null) {
-        window.clearTimeout(keyboardResetTimerRef.current);
-        keyboardResetTimerRef.current = null;
-      }
-      document.documentElement.classList.add("keyboard-open");
-    };
-
-    const handleFocusOut = () => {
-      if (keyboardResetTimerRef.current !== null) {
-        window.clearTimeout(keyboardResetTimerRef.current);
-      }
-      // 100ms delay: lets focus settle on a new element (if the user moved
-      // between inputs), and times the bar's 200ms slide-in to finish just as
-      // the iOS keyboard animation (~300ms) completes.
-      keyboardResetTimerRef.current = window.setTimeout(() => {
-        if (!isTextInputElement(document.activeElement)) {
-          document.documentElement.classList.remove("keyboard-open");
-        }
-        keyboardResetTimerRef.current = null;
-      }, 100);
-    };
-
-    document.addEventListener("focusin", handleFocusIn, true);
-    document.addEventListener("focusout", handleFocusOut, true);
-
-    return () => {
-      if (keyboardResetTimerRef.current !== null) {
-        window.clearTimeout(keyboardResetTimerRef.current);
-        keyboardResetTimerRef.current = null;
-      }
-      document.documentElement.classList.remove("keyboard-open");
-      document.removeEventListener("focusin", handleFocusIn, true);
-      document.removeEventListener("focusout", handleFocusOut, true);
-    };
-  }, []);
-
-  useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       setIsTopBarHidden(false);
-      lastScrollYRef.current = window.scrollY;
+      lastScrollYRef.current = pageWrapRef.current?.scrollTop ?? 0;
     });
 
     return () => {
@@ -480,16 +441,19 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   useEffect(() => {
     if (!isHomeFeed) return;
 
+    const scrollEl = pageWrapRef.current;
+    if (!scrollEl) return;
+
     const onScroll = () => {
-      const nextScrollY = window.scrollY;
+      const nextScrollY = scrollEl.scrollTop;
       const delta = nextScrollY - lastScrollYRef.current;
       if (delta > 0 && nextScrollY > 0) setIsTopBarHidden(true);
       else if (delta < 0) setIsTopBarHidden(false);
       lastScrollYRef.current = nextScrollY;
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    scrollEl.addEventListener("scroll", onScroll, { passive: true });
+    return () => scrollEl.removeEventListener("scroll", onScroll);
   }, [isHomeFeed]);
 
   useEffect(() => {
@@ -635,6 +599,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       <main
         aria-hidden={showHomeStartupSplash}
         className={`${isProfilePage ? "page-wrap page-wrap-no-top-bar" : "page-wrap"} ${showHomeStartupSplash ? "is-hidden-for-startup-splash" : ""}`}
+        ref={pageWrapRef}
       >
         {children}
       </main>

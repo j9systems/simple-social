@@ -81,9 +81,12 @@ p {
 
 .page-wrap {
   flex: 1;
+  min-height: 0;
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem var(--tabbar-total-height, 64px);
+  padding: 1.25rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .page-wrap-no-top-bar {
@@ -91,8 +94,7 @@ p {
 }
 
 .app-shell {
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -291,35 +293,16 @@ p {
 }
 
 .tab-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-
-  /* Visuals */
+  flex-shrink: 0;
   border-top: 1px solid var(--line);
   background: var(--tabbar-bg, #fff);
   box-shadow: 0 -4px 14px rgba(30, 29, 26, 0.08);
-  z-index: 1000;
-
-  /* Stable height calculation */
-  height: var(--tabbar-height, 64px);
-
-  /* Safe-area applied as padding, not position */
+  height: calc(var(--tabbar-height, 64px) + env(safe-area-inset-bottom));
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  padding-bottom: 0;
-
-  /* Prevent layout reflow from internal flex children */
+  padding-bottom: env(safe-area-inset-bottom);
   display: flex;
   align-items: stretch;
-  transition: transform 200ms ease, opacity 200ms ease;
-}
-
-html.keyboard-open .tab-bar {
-  transform: translateY(100%);
-  opacity: 0;
-  pointer-events: none;
 }
 
 .tab-bar-inner {

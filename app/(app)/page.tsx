@@ -1016,6 +1016,9 @@ export default function HomePage() {
   }, [pullDistance]);
 
   useEffect(() => {
+    const scrollEl = document.querySelector<HTMLElement>(".page-wrap");
+    if (!scrollEl) return;
+
     const onTouchStart = (event: globalThis.TouchEvent) => {
       if (!hasSupabaseEnv || isRefreshingFeed || openCommentsPostId) {
         return;
@@ -1023,7 +1026,7 @@ export default function HomePage() {
       if (event.touches.length !== 1) {
         return;
       }
-      if (window.scrollY > 0) {
+      if (scrollEl.scrollTop > 0) {
         return;
       }
       pullActiveRef.current = true;
@@ -1038,7 +1041,7 @@ export default function HomePage() {
       if (event.touches.length !== 1) {
         return;
       }
-      if (window.scrollY > 0) {
+      if (scrollEl.scrollTop > 0) {
         pullActiveRef.current = false;
         setIsPullingFeed(false);
         setPullDistance(0);
@@ -1089,16 +1092,16 @@ export default function HomePage() {
       triggerFeedRefresh(pullDistanceRef.current);
     };
 
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: false });
-    window.addEventListener("touchend", onTouchEnd);
-    window.addEventListener("touchcancel", onTouchEnd);
+    scrollEl.addEventListener("touchstart", onTouchStart, { passive: true });
+    scrollEl.addEventListener("touchmove", onTouchMove, { passive: false });
+    scrollEl.addEventListener("touchend", onTouchEnd);
+    scrollEl.addEventListener("touchcancel", onTouchEnd);
 
     return () => {
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onTouchEnd);
-      window.removeEventListener("touchcancel", onTouchEnd);
+      scrollEl.removeEventListener("touchstart", onTouchStart);
+      scrollEl.removeEventListener("touchmove", onTouchMove);
+      scrollEl.removeEventListener("touchend", onTouchEnd);
+      scrollEl.removeEventListener("touchcancel", onTouchEnd);
     };
   }, [isPullingFeed, isRefreshingFeed, openCommentsPostId, triggerFeedRefresh]);
 
@@ -1127,11 +1130,12 @@ export default function HomePage() {
 
   useEffect(() => {
     const onHomeTabReselect = () => {
-      if (window.scrollY <= 0) {
+      const scrollEl = document.querySelector<HTMLElement>(".page-wrap");
+      if (!scrollEl || scrollEl.scrollTop <= 0) {
         return;
       }
 
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollEl.scrollTo({ top: 0, behavior: "smooth" });
       if (hasSupabaseEnv) {
         triggerFeedRefresh();
       }
