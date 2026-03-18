@@ -16,7 +16,6 @@ const PWA_ICON_URL =
 const WORDMARK_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg";
 const VIEWPORT_BOTTOM_CSS_VAR = "--vv-bottom";
-const KEYBOARD_LIFT_MIN_PX = 80;
 
 const tabs = [
   {
@@ -127,7 +126,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const [pendingFollowRequestActorIds, setPendingFollowRequestActorIds] = useState<Set<string>>(new Set());
 
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [hasHomeInitialFeedLoaded, setHasHomeInitialFeedLoaded] = useState(homeInitialFeedReadyOnWindow);
@@ -143,7 +141,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   const unreadNotificationsCount = notifications.filter((notification) => !notification.read_at).length;
   const showHomeStartupSplash = isHomeFeed && !hasHomeInitialFeedLoaded;
-  const isSearchRoute = pathname === "/search";
 
   const setViewportBottomInset = useCallback((value: number) => {
     const root = document.documentElement;
@@ -159,35 +156,14 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   }, [setViewportBottomInset]);
 
   const syncViewportBottomInset = useCallback(() => {
-    if (document.hidden || !isSearchRoute) {
-      resetViewportBottomInset();
-      setIsKeyboardVisible(false);
-      return;
-    }
-
-    const activeElement = document.activeElement;
-    if (!isTextInputElement(activeElement)) {
-      resetViewportBottomInset();
-      setIsKeyboardVisible(false);
-      return;
-    }
-
-    const nextInset = getVisualViewportBottomInset();
-    if (nextInset < KEYBOARD_LIFT_MIN_PX) {
-      resetViewportBottomInset();
-      setIsKeyboardVisible(false);
-      return;
-    }
-
-    setIsKeyboardVisible(true);
-  }, [isSearchRoute, resetViewportBottomInset]);
+    resetViewportBottomInset();
+  }, [resetViewportBottomInset]);
 
   const dismissSoftKeyboard = useCallback(() => {
     const activeElement = document.activeElement;
     if (!isTextInputElement(activeElement)) return;
     (activeElement as HTMLElement).blur();
     resetViewportBottomInset();
-    setIsKeyboardVisible(false);
   }, [resetViewportBottomInset]);
 
   const loadPendingFollowRequests = useCallback(
@@ -744,7 +720,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       ) : null}
 
       {!showHomeStartupSplash ? (
-        <nav aria-label="Primary" className={`tab-bar${isKeyboardVisible ? " is-keyboard-hidden" : ""}`} ref={tabBarRef}>
+        <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
           <div className="tab-bar-inner">
             {tabs.map((tab) => (
               <Link
