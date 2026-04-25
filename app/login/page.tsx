@@ -7,7 +7,7 @@ import { isPushSupported, subscribeToPush } from "@/lib/push-notifications";
 import { isMissingFullNameColumnError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "forgot";
 type UsernameStatus = "idle" | "checking" | "available" | "taken" | "error";
 
 function getFriendlyAuthError(message: string) {
@@ -112,6 +112,28 @@ export default function LoginPage() {
     }
 
     router.replace("/");
+  };
+
+  const sendPasswordReset = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!hasSupabaseEnv) return;
+
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    setLoading(false);
+
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+
+    setNotice("Check your email for a password reset link.");
   };
 
   const signUp = async (event: FormEvent<HTMLFormElement>) => {
@@ -340,6 +362,44 @@ export default function LoginPage() {
           </button>
         </div>
 
+        {mode === "forgot" ? (
+          <form className="auth-form" onSubmit={sendPasswordReset}>
+            <p style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+              Enter your email and we&apos;ll send you a link to reset your password.
+            </p>
+
+            <label htmlFor="email">Email</label>
+            <input
+              autoComplete="email"
+              id="email"
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              type="email"
+              value={email}
+            />
+
+            <button className="primary-button" disabled={loading || !hasSupabaseEnv} type="submit">
+              {loading ? "Sending..." : "Send reset link"}
+            </button>
+
+            <button
+              className="auth-forgot-link"
+              onClick={() => {
+                setMode("login");
+                setError(null);
+                setNotice(null);
+              }}
+              type="button"
+            >
+              Back to log in
+            </button>
+
+            {error ? <p className="auth-message">{error}</p> : null}
+            {notice ? <p className="auth-message">{notice}</p> : null}
+          </form>
+        ) : null}
+
+        {mode !== "forgot" ? (
         <form
           aria-labelledby={mode === "login" ? "auth-tab-login" : "auth-tab-signup"}
           className="auth-form"
@@ -414,9 +474,24 @@ export default function LoginPage() {
           <button className="primary-button" disabled={loading || !hasSupabaseEnv} type="submit">
             {loading ? "Working..." : mode === "login" ? "Log in" : "Create account"}
           </button>
+
+          {mode === "login" ? (
+            <button
+              className="auth-forgot-link"
+              onClick={() => {
+                setMode("forgot");
+                setError(null);
+                setNotice(null);
+              }}
+              type="button"
+            >
+              Forgot password?
+            </button>
+          ) : null}
         </form>
-        {error ? <p className="auth-message">{error}</p> : null}
-        {notice ? <p className="auth-message">{notice}</p> : null}
+        ) : null}
+        {error && mode !== "forgot" ? <p className="auth-message">{error}</p> : null}
+        {notice && mode !== "forgot" ? <p className="auth-message">{notice}</p> : null}
       </section>
     </main>
   );

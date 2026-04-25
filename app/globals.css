@@ -540,6 +540,17 @@ button {
   font-size: 0.9rem;
 }
 
+.auth-forgot-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 0.25rem 0;
+  text-align: center;
+}
+
 .feed-list {
   display: grid;
   gap: 0;
