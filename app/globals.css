@@ -128,11 +128,10 @@ p {
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--background) 92%, white);
   backdrop-filter: blur(8px);
-  transition: transform 180ms ease;
 }
 
-.top-bar.is-hidden-on-scroll {
-  transform: translateY(-100%);
+.top-bar.top-bar-home {
+  position: relative;
 }
 
 .brand-logo {

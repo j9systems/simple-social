@@ -126,7 +126,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const [notificationsDebugMessage, setNotificationsDebugMessage] = useState<string | null>(null);
   const [pendingFollowRequestActorIds, setPendingFollowRequestActorIds] = useState<Set<string>>(new Set());
 
-  const [isTopBarHidden, setIsTopBarHidden] = useState(false);
   const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [hasHomeInitialFeedLoaded, setHasHomeInitialFeedLoaded] = useState(homeInitialFeedReadyOnWindow);
@@ -136,7 +135,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const tabBarRef = useRef<HTMLElement | null>(null);
   const keyboardResetTimerRef = useRef<number | null>(null);
 
-  const lastScrollYRef = useRef(0);
   const scrollYBeforeFocusRef = useRef(0);
   const navMountLoggedRef = useRef(false);
   const firstPaintLoggedRef = useRef(false);
@@ -343,7 +341,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       if (window.scrollY <= 0) return;
 
       event.preventDefault();
-      setIsTopBarHidden(false);
       window.dispatchEvent(new Event(HOME_TAB_RESELECT_EVENT));
     },
     [pathname],
@@ -552,17 +549,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   }, [pathname, resetViewportBottomInset, syncViewportBottomInset]);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setIsTopBarHidden(false);
-      lastScrollYRef.current = window.scrollY;
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, [pathname]);
-
-  useEffect(() => {
     const onInitialFeedReady = () => {
       setHasHomeInitialFeedLoaded(true);
     };
@@ -573,21 +559,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       window.removeEventListener(HOME_INITIAL_FEED_READY_EVENT, onInitialFeedReady);
     };
   }, []);
-
-  useEffect(() => {
-    if (!isHomeFeed) return;
-
-    const onScroll = () => {
-      const nextScrollY = window.scrollY;
-      const delta = nextScrollY - lastScrollYRef.current;
-      if (delta > 0 && nextScrollY > 0) setIsTopBarHidden(true);
-      else if (delta < 0) setIsTopBarHidden(false);
-      lastScrollYRef.current = nextScrollY;
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [isHomeFeed]);
 
   useEffect(() => {
     const hasPaintSupport = typeof PerformanceObserver !== "undefined";
@@ -633,7 +604,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   return (
     <div className="app-shell">
       {!isProfilePage && !showHomeStartupSplash ? (
-        <header className={`top-bar ${isHomeFeed && isTopBarHidden ? "is-hidden-on-scroll" : ""}`}>
+        <header className={`top-bar ${isHomeFeed ? "top-bar-home" : ""}`}>
           <Image
             alt="Simple Social"
             className={useHomeBrandTreatment ? "brand-logo brand-logo-home" : "brand-logo"}
