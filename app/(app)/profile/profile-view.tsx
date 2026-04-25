@@ -420,6 +420,11 @@ export default function ProfileView({ username }: ProfileViewProps) {
       setIsFollowing(true);
       setHasPendingFollowRequest(false);
       setFollowersCount((count) => count + 1);
+      void createNotification({
+        type: "follow",
+        recipientUserId: profile.id,
+        actorUserId: viewer.id,
+      });
     }
 
     setPendingFollowAction(false);

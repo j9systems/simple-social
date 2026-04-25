@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouse
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT } from "@/lib/events";
 import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
+import { registerServiceWorker } from "@/lib/push-notifications";
 import { isMissingTableError } from "@/lib/supabase-errors";
 import { supabase } from "@/lib/supabase";
 import type { NotificationItem } from "@/lib/types";
@@ -427,6 +428,10 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       window.removeEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
     };
   }, [viewer.id, viewer.metadata]);
+
+  useEffect(() => {
+    void registerServiceWorker();
+  }, []);
 
   useEffect(() => {
     if (!notificationsOpen) return;

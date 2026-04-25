@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isPushSupported, subscribeToPush } from "@/lib/push-notifications";
 import { isMissingFullNameColumnError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 
@@ -225,6 +226,9 @@ export default function LoginPage() {
       }
 
       setLoading(false);
+      if (isPushSupported()) {
+        void subscribeToPush();
+      }
       router.replace("/");
       return;
     }
@@ -276,6 +280,9 @@ export default function LoginPage() {
     }
 
     setNotice("Account created. You are now signed in.");
+    if (isPushSupported()) {
+      void subscribeToPush();
+    }
     router.replace("/");
   };
 

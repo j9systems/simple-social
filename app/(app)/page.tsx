@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import type { TouchEvent } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
 import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT } from "@/lib/events";
+import { createNotification } from "@/lib/notifications";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedComment, FeedPost } from "@/lib/types";
 
@@ -309,10 +310,20 @@ export default function HomePage() {
             : post,
         ),
       );
+    } else {
+      const likedPost = posts.find((p) => p.id === postId);
+      if (likedPost && likedPost.user_id !== viewerId) {
+        void createNotification({
+          type: "post_like",
+          recipientUserId: likedPost.user_id,
+          actorUserId: viewerId,
+          postId,
+        });
+      }
     }
 
     setPendingDone();
-  }, [likePendingIds, likedPostIds, viewerId]);
+  }, [likePendingIds, likedPostIds, posts, viewerId]);
 
   const loadCommentsForPost = useCallback(async (postId: string) => {
     if (!viewerId) {
@@ -533,10 +544,22 @@ export default function HomePage() {
             : comment,
         ),
       }));
+    } else {
+      const comments = commentsByPostId[postId] ?? [];
+      const likedComment = comments.find((c) => c.id === commentId);
+      if (likedComment && likedComment.user_id && likedComment.user_id !== viewerId) {
+        void createNotification({
+          type: "comment_like",
+          recipientUserId: likedComment.user_id,
+          actorUserId: viewerId,
+          postId,
+          commentId,
+        });
+      }
     }
 
     setPendingDone();
-  }, [commentLikePendingIds, likedCommentIds, viewerId]);
+  }, [commentLikePendingIds, commentsByPostId, likedCommentIds, viewerId]);
 
   const submitComment = useCallback(async () => {
     if (!viewerId || !openCommentsPostId) {
@@ -610,7 +633,18 @@ export default function HomePage() {
     );
     setCommentDraftByPostId((current) => ({ ...current, [openCommentsPostId]: "" }));
 
-  }, [commentDraftByPostId, commentSubmitPendingByPostId, openCommentsPostId, viewerAvatarUrl, viewerId, viewerUsername]);
+    const commentedPost = posts.find((p) => p.id === openCommentsPostId);
+    if (commentedPost && commentedPost.user_id !== viewerId) {
+      void createNotification({
+        type: "comment",
+        recipientUserId: commentedPost.user_id,
+        actorUserId: viewerId,
+        postId: openCommentsPostId,
+        commentId: insertedComment.id,
+      });
+    }
+
+  }, [commentDraftByPostId, commentSubmitPendingByPostId, openCommentsPostId, posts, viewerAvatarUrl, viewerId, viewerUsername]);
 
   const deleteComment = useCallback(async (comment: FeedComment) => {
     if (!viewerId || comment.user_id !== viewerId || commentDeletePendingId === comment.id) {

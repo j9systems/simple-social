@@ -2,6 +2,57 @@ import { supabase } from "@/lib/supabase";
 import { isMissingTableError } from "@/lib/supabase-errors";
 import type { NotificationItem, NotificationType } from "@/lib/types";
 
+type PushPayload = {
+  recipientUserId: string;
+  actorUserId: string;
+  type: NotificationType;
+  postId?: string | null;
+  commentId?: string | null;
+};
+
+async function sendPushForNotification({ type, recipientUserId, actorUserId, postId, commentId }: PushPayload) {
+  try {
+    const { data: actorProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", actorUserId)
+      .maybeSingle();
+
+    const actorName = actorProfile?.username ? `@${actorProfile.username}` : "Someone";
+
+    const messages: Record<NotificationType, string> = {
+      follow: `${actorName} followed you`,
+      follow_request: `${actorName} requested to follow you`,
+      post_like: `${actorName} liked your post`,
+      comment: `${actorName} commented on your post`,
+      comment_like: `${actorName} liked your comment`,
+    };
+
+    const urlMap: Record<NotificationType, string> = {
+      follow: actorProfile?.username ? `/u/${actorProfile.username}` : "/",
+      follow_request: actorProfile?.username ? `/u/${actorProfile.username}` : "/",
+      post_like: postId ? `/p/${postId}` : "/",
+      comment: postId ? `/p/${postId}` : "/",
+      comment_like: postId ? `/p/${postId}` : "/",
+    };
+
+    await fetch("/api/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        recipientUserId,
+        title: "Simple Social",
+        body: messages[type],
+        url: urlMap[type],
+        tag: `${type}:${postId ?? commentId ?? actorUserId}`,
+      }),
+    });
+  } catch {
+    // Push delivery should never block core actions
+    console.error("Failed to send push notification");
+  }
+}
+
 type CreateNotificationInput = {
   type: NotificationType;
   recipientUserId: string;
@@ -70,7 +121,11 @@ export async function createNotification({
   // Notification delivery should never block core actions.
   if (error) {
     console.error("Failed to create notification", error.message);
+    return;
   }
+
+  // Fire push notification (non-blocking)
+  void sendPushForNotification({ type, recipientUserId, actorUserId, postId, commentId });
 }
 
 export async function listNotifications(recipientUserId: string, limit = 40): Promise<ListNotificationsResult> {

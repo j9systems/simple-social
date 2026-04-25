@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AVATAR_UPDATED_EVENT, AVATAR_VERSION_KEY, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
+import { isPushSupported, isCurrentlySubscribed, subscribeToPush, unsubscribeFromPush } from "@/lib/push-notifications";
 import { isMissingColumnError, isMissingFullNameColumnError } from "@/lib/supabase-errors";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import { applyTheme, readStoredTheme, THEME_STORAGE_KEY } from "@/lib/theme";
@@ -27,6 +28,9 @@ export default function SettingsPage() {
   const [supportsPrivateColumn, setSupportsPrivateColumn] = useState(true);
   const [isPrivate, setIsPrivate] = useState(false);
   const [darkModeEnabled, setDarkModeEnabled] = useState(() => readStoredTheme() === "dark");
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushToggleLoading, setPushToggleLoading] = useState(false);
   const [initialUsername, setInitialUsername] = useState("");
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
 
@@ -130,6 +134,12 @@ export default function SettingsPage() {
       setCurrentAvatarUrl(profile?.avatar_url ?? metadataAvatarUrl);
       setIsPrivate(profile?.is_private ?? false);
       setLoading(false);
+
+      if (isPushSupported()) {
+        setPushSupported(true);
+        const subscribed = await isCurrentlySubscribed();
+        setPushEnabled(subscribed);
+      }
     };
 
     loadProfile();
@@ -465,6 +475,37 @@ export default function SettingsPage() {
               <span className="visually-hidden">Enable dark mode</span>
             </label>
           </div>
+
+          {pushSupported ? (
+            <div className="settings-theme-row">
+              <div>
+                <p className="settings-theme-title">Push Notifications</p>
+                <p className="settings-theme-hint">Receive notifications for likes, comments, and follows.</p>
+              </div>
+              <label className="theme-toggle" htmlFor="push-notifications-toggle">
+                <input
+                  checked={pushEnabled}
+                  disabled={pushToggleLoading}
+                  id="push-notifications-toggle"
+                  onChange={async (event) => {
+                    const checked = event.target.checked;
+                    setPushToggleLoading(true);
+                    if (checked) {
+                      const success = await subscribeToPush();
+                      setPushEnabled(success);
+                    } else {
+                      await unsubscribeFromPush();
+                      setPushEnabled(false);
+                    }
+                    setPushToggleLoading(false);
+                  }}
+                  type="checkbox"
+                />
+                <span aria-hidden="true" className="theme-toggle-track" />
+                <span className="visually-hidden">Enable push notifications</span>
+              </label>
+            </div>
+          ) : null}
 
           <button className="primary-button" disabled={saving} type="submit">
             {saving ? "Saving..." : "Save changes"}
