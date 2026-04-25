@@ -210,10 +210,14 @@ p {
   margin: 0;
   padding: 0.65rem 0.85rem;
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, #b31a1a 9%, #fff);
-  color: #8f1313;
+  background: color-mix(in srgb, #b31a1a 9%, var(--surface));
+  color: #d94848;
   font-size: 0.78rem;
   line-height: 1.35;
+}
+
+:root[data-theme="dark"] .notifications-error {
+  color: #f47272;
 }
 
 .notifications-list {
@@ -227,7 +231,7 @@ p {
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: 0.5rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 83%, #fff);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 83%, var(--surface));
   padding: 0.2rem 0.25rem 0.2rem 0;
 }
 
@@ -245,7 +249,7 @@ p {
 }
 
 .notification-item.is-unread {
-  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
 }
 
 .notification-accept-button {
@@ -260,7 +264,7 @@ p {
   border-radius: 999px;
   border: 1px solid var(--line);
   object-fit: cover;
-  background: #ece8e0;
+  background: color-mix(in srgb, var(--line) 40%, var(--surface));
 }
 
 .notification-post-thumb {
@@ -269,7 +273,7 @@ p {
   border-radius: 8px;
   border: 1px solid var(--line);
   object-fit: cover;
-  background: #ece8e0;
+  background: color-mix(in srgb, var(--line) 40%, var(--surface));
 }
 
 .notification-copy {
