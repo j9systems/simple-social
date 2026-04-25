@@ -263,10 +263,19 @@ export async function markNotificationAsRead(notificationId: string, recipientUs
   const response = await supabase
     .from("notifications")
     .update({ is_read: true, read_at: nowIso })
-    .eq("id", notificationId)
-    .eq("recipient_profile_id", recipientUserId);
+    .eq("id", Number(notificationId))
+    .eq("recipient_profile_id", recipientUserId)
+    .select("id");
 
   if (response.error) {
     console.error("Failed to mark notification as read", response.error.message);
+    return;
+  }
+
+  if (!response.data || response.data.length === 0) {
+    console.warn(
+      "markNotificationAsRead: update matched 0 rows",
+      { notificationId, recipientUserId },
+    );
   }
 }
