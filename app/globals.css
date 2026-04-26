@@ -83,8 +83,8 @@ p {
 }
 
 .app-shell {
-  height: 100vh;
-  height: 100dvh;
+  position: fixed;
+  inset: 0;
   overflow-y: auto;
   overscroll-behavior-y: contain;
   scroll-padding-top: calc(64px + env(safe-area-inset-top));
