@@ -110,6 +110,10 @@ export async function createNotification({
     return;
   }
 
+  // DB triggers (notify_on_follow, notify_on_post_like, notify_on_comment,
+  // notify_on_comment_like) already create the notification row server-side.
+  // The insert below is a fallback for any type without a trigger; if the
+  // trigger already created the row, the duplicate insert error is expected.
   const { error } = await supabase.from("notifications").insert({
     type,
     recipient_profile_id: recipientUserId,
@@ -118,13 +122,13 @@ export async function createNotification({
     comment_id: commentId,
   });
 
-  // Notification delivery should never block core actions.
   if (error) {
-    console.error("Failed to create notification", error.message);
-    return;
+    // Expected when a DB trigger already created the notification row.
+    console.warn("Notification insert skipped (likely created by DB trigger)", error.message);
   }
 
-  // Fire push notification (non-blocking)
+  // Always attempt push delivery — the notification row exists via the DB trigger
+  // even when the client-side insert above was a no-op.
   void sendPushForNotification({ type, recipientUserId, actorUserId, postId, commentId });
 }
 
