@@ -572,7 +572,11 @@ button {
 }
 
 .pull-refresh-ring.is-refreshing {
-  animation: spin 0.8s linear infinite;
+  /* Override the full conic fill with a 75% arc so the spin is visible */
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--surface) 96%, #fff) 57%, transparent 58%),
+    conic-gradient(var(--deep-purple) 0.75turn, transparent 0);
+  animation: spin 0.7s linear infinite;
 }
 
 .feed-post {
