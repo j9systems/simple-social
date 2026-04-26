@@ -45,21 +45,18 @@
   display: none;
 }
 
-/* Match html and body backgrounds to the tab bar so the iOS safe-area
-   gap at the bottom blends seamlessly (same technique as J9 Command Center).
-   Do NOT set height:100% or overflow:hidden on html/body — those prevent
-   the page from extending into the safe area on iOS. */
 html,
 body {
   background: var(--tabbar-bg, #fff);
   margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
   color: var(--foreground);
   font-family: "Segoe UI", sans-serif;
   -webkit-text-size-adjust: 100%;
-  overscroll-behavior: none;
 }
 
 h1 {
@@ -299,10 +296,9 @@ p {
   background: var(--tabbar-bg, #fff);
   box-shadow: 0 -4px 14px rgba(30, 29, 26, 0.08);
 
-  /* Safe-area padding */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: 0;
 
   display: flex;
   align-items: stretch;
