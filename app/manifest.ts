@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Simple social app with Supabase auth",
     start_url: "/",
     display: "standalone",
-    background_color: "#f7f7f5",
+    background_color: "#ffffff",
     theme_color: "#0d77d9",
     icons: [
       {

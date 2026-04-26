@@ -73,10 +73,10 @@ p {
 }
 
 .page-wrap {
-  flex: 1;
+  flex: 1 0 auto;
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem calc(var(--tabbar-height, 64px) + env(safe-area-inset-bottom) + 0.5rem);
+  padding: 1.25rem;
 }
 
 .page-wrap-no-top-bar {
@@ -297,24 +297,23 @@ p {
 }
 
 .tab-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Flex child — NOT position:fixed. In iOS PWA standalone mode,
+     fixed bottom:0 lands at the safe-area boundary, not the physical
+     screen edge, and env(safe-area-inset-bottom) can resolve to 0.
+     As a flex child of the viewport-height .app-shell, the tab bar
+     sits at the true bottom and its padding-bottom extends its
+     background through the home-indicator zone. */
+  position: relative;
+  flex: none;
   z-index: 1000;
 
   border-top: 1px solid var(--line);
   background: var(--tabbar-bg, #fff);
   box-shadow: 0 -4px 14px rgba(30, 29, 26, 0.08);
 
-  /* Fixed height — 86px on mobile already places icons above the ~34px
-     safe area, so NO padding-bottom for safe area is needed. The matching
-     html/body background fills the safe area zone below seamlessly. */
-  height: var(--tabbar-height, 64px);
-
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  padding-bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom);
 
   display: flex;
   align-items: stretch;
@@ -325,7 +324,7 @@ p {
   width: min(760px, 100%);
   margin: 0 auto;
   display: flex;
-  height: var(--tabbar-height, 64px);
+  height: 56px;   /* icon/label area only — safe area handled by parent padding */
   padding: 0.35rem 0.8rem;
   background: transparent;
 }
