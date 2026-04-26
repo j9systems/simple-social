@@ -494,6 +494,75 @@ button {
   gap: 0;
 }
 
+/* ── Profile completeness checklist ── */
+
+.profile-checklist {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--feed-divider);
+  background: var(--surface);
+}
+
+.profile-checklist-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 0.6rem;
+  color: var(--foreground);
+}
+
+.profile-checklist-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.profile-checklist-items li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.profile-checklist-items li.is-done {
+  color: var(--foreground);
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.profile-checklist-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  font-size: 0.7rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.profile-checklist-items li.is-done .profile-checklist-icon {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.profile-checklist-link {
+  display: inline-block;
+  margin-top: 0.65rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.profile-checklist-link:active {
+  opacity: 0.7;
+}
+
 .home-page .feed-post {
   border-radius: 0;
   border-bottom: 1px solid var(--feed-divider);

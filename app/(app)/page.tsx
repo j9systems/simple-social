@@ -39,6 +39,7 @@ type HomeFeedCacheSnapshot = {
   viewerId: string | null;
   viewerUsername: string | null;
   viewerAvatarUrl: string | null;
+  viewerFullName: string | null;
 };
 
 const HOME_FEED_CACHE_TTL_MS = 3 * 60 * 1000;
@@ -178,6 +179,7 @@ export default function HomePage() {
   const [viewerId, setViewerId] = useState<string | null>(initialHomeFeedCache?.viewerId ?? null);
   const [viewerUsername, setViewerUsername] = useState<string | null>(initialHomeFeedCache?.viewerUsername ?? null);
   const [viewerAvatarUrl, setViewerAvatarUrl] = useState<string | null>(initialHomeFeedCache?.viewerAvatarUrl ?? null);
+  const [viewerFullName, setViewerFullName] = useState<string | null>(initialHomeFeedCache?.viewerFullName ?? null);
   const [likePendingIds, setLikePendingIds] = useState<Record<string, boolean>>({});
   const [commentLikePendingIds, setCommentLikePendingIds] = useState<Record<string, boolean>>({});
   const [commentSubmitPendingByPostId, setCommentSubmitPendingByPostId] = useState<Record<string, boolean>>({});
@@ -901,7 +903,7 @@ export default function HomePage() {
 
       const { data: viewerProfileData } = await supabase
         .from("profiles")
-        .select("username,avatar_url")
+        .select("username,avatar_url,full_name")
         .eq("id", viewerId)
         .maybeSingle();
       if (!mounted) {
@@ -911,6 +913,7 @@ export default function HomePage() {
       const metadataUsername = typeof metadata.username === "string" ? metadata.username.trim() : "";
       setViewerUsername(((viewerProfileData?.username as string | null) ?? metadataUsername) || null);
       setViewerAvatarUrl((viewerProfileData?.avatar_url as string | null) ?? null);
+      setViewerFullName((viewerProfileData?.full_name as string | null) ?? null);
 
       const { data: followsData, error: followsError } = await supabase
         .from("follows")
@@ -1002,8 +1005,9 @@ export default function HomePage() {
       viewerId,
       viewerUsername,
       viewerAvatarUrl,
+      viewerFullName,
     };
-  }, [error, likedPostIds, loading, posts, viewerAvatarUrl, viewerId, viewerUsername]);
+  }, [error, likedPostIds, loading, posts, viewerAvatarUrl, viewerFullName, viewerId, viewerUsername]);
 
   useEffect(() => {
     const syncAvatarVersion = () => {
@@ -1215,8 +1219,35 @@ export default function HomePage() {
       return <p>No posts yet.</p>;
     }
 
+    const hasName = Boolean(viewerFullName);
+    const hasUsername = Boolean(viewerUsername);
+    const hasAvatar = Boolean(viewerAvatarUrl);
+    const profileComplete = hasName && hasUsername && hasAvatar;
+
     return (
       <div className="feed-list">
+        {!profileComplete && viewerId ? (
+          <div className="profile-checklist">
+            <h3 className="profile-checklist-title">Complete your profile</h3>
+            <ul className="profile-checklist-items">
+              <li className={hasName ? "is-done" : ""}>
+                <span className="profile-checklist-icon">{hasName ? "✓" : ""}</span>
+                <span>Add your name</span>
+              </li>
+              <li className={hasUsername ? "is-done" : ""}>
+                <span className="profile-checklist-icon">{hasUsername ? "✓" : ""}</span>
+                <span>Add a username</span>
+              </li>
+              <li className={hasAvatar ? "is-done" : ""}>
+                <span className="profile-checklist-icon">{hasAvatar ? "✓" : ""}</span>
+                <span>Add a profile picture</span>
+              </li>
+            </ul>
+            <Link className="profile-checklist-link" href="/profile">
+              Go to profile →
+            </Link>
+          </div>
+        ) : null}
         {posts.map((post) => {
           const liked = Boolean(likedPostIds[post.id]);
           const likePending = Boolean(likePendingIds[post.id]);
@@ -1365,7 +1396,10 @@ export default function HomePage() {
     posts,
     triggerDoubleTapLike,
     toggleLike,
+    viewerAvatarUrl,
+    viewerFullName,
     viewerId,
+    viewerUsername,
   ]);
 
   const openCommentsPost = openCommentsPostId
