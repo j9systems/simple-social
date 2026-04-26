@@ -68,6 +68,7 @@ html,
 body {
   height: 100%;
   margin: 0;
+  overscroll-behavior: none;
 }
 
 h1 {
