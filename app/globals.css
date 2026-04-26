@@ -44,14 +44,11 @@
   display: none;
 }
 
-/* Do NOT set overflow:hidden on html/body — on iOS PWA standalone mode,
-   it prevents viewport-fit:cover from extending into the safe area,
-   causing position:fixed;bottom:0 to stop above the home indicator.
-   J9 Command Center has no overflow on html/body either. */
 html,
 body {
   background: var(--background);
   margin: 0;
+  padding: 0;
 }
 
 body {
@@ -72,7 +69,6 @@ p {
 }
 
 .page-wrap {
-  flex: 1 0 auto;
   width: min(760px, 100%);
   margin: 0 auto;
   padding: 1.25rem 1.25rem 0;
@@ -83,24 +79,8 @@ p {
 }
 
 .app-shell {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  scroll-padding-top: calc(64px + env(safe-area-inset-top));
-}
-
-/* In iOS PWA standalone mode, bottom:0 for fixed elements can stop at the
-   safe-area boundary instead of the physical screen edge. This extends the
-   scroll container past that boundary so content fills the full screen. */
-@media (display-mode: standalone) {
-  .app-shell {
-    bottom: calc(-1 * env(safe-area-inset-bottom, 34px));
-    padding-bottom: env(safe-area-inset-bottom, 34px);
-  }
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .page-wrap.is-hidden-for-startup-splash {
