@@ -289,7 +289,11 @@ p {
 
 .tab-bar {
   position: fixed;
-  bottom: 0;
+  /* Push the tab bar DOWN into the safe area so it reaches the physical
+     screen bottom. In iOS PWA standalone mode, bottom:0 stops at the
+     safe-area boundary — this negative offset compensates. On devices
+     without a safe area, env() resolves to 0 and bottom stays at 0. */
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   z-index: 1000;
@@ -301,7 +305,10 @@ p {
 
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Extend background through the safe area but keep icons above the
+     home indicator. The tab-bar-inner height (86px) already places icons
+     well above the 34px safe area, so this padding fills the gap below. */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 
   display: flex;
   align-items: stretch;
