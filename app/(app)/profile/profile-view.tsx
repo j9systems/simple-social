@@ -35,16 +35,20 @@ export default function ProfileView({ username }: ProfileViewProps) {
   const profileCacheKey = username ? `u:${username}` : "self";
   const initialProfileCache = profileCacheByKey.get(profileCacheKey) ?? null;
 
-  const [viewer, setViewer] = useState<User | null>(null);
-  const [profile, setProfile] = useState<ProfileRecord | null>(null);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [hasPendingFollowRequest, setHasPendingFollowRequest] = useState(false);
-  const [isPrivate, setIsPrivate] = useState(false);
+  // If a fresh cache snapshot exists, use it to skip the loading spinner entirely.
+  const cacheHit =
+    initialProfileCache && Date.now() - initialProfileCache.cachedAt <= PROFILE_CACHE_TTL_MS;
+
+  const [viewer, setViewer] = useState<User | null>(cacheHit ? initialProfileCache.viewer : null);
+  const [profile, setProfile] = useState<ProfileRecord | null>(cacheHit ? initialProfileCache.profile : null);
+  const [posts, setPosts] = useState<FeedPost[]>(cacheHit ? initialProfileCache.posts : []);
+  const [followersCount, setFollowersCount] = useState(cacheHit ? initialProfileCache.followersCount : 0);
+  const [followingCount, setFollowingCount] = useState(cacheHit ? initialProfileCache.followingCount : 0);
+  const [isFollowing, setIsFollowing] = useState(cacheHit ? initialProfileCache.isFollowing : false);
+  const [hasPendingFollowRequest, setHasPendingFollowRequest] = useState(cacheHit ? initialProfileCache.hasPendingFollowRequest : false);
+  const [isPrivate, setIsPrivate] = useState(cacheHit ? initialProfileCache.isPrivate : false);
   const [avatarVersion, setAvatarVersion] = useState(0);
-  const [loading, setLoading] = useState(hasSupabaseEnv);
+  const [loading, setLoading] = useState(hasSupabaseEnv && !cacheHit);
   const [pendingFollowAction, setPendingFollowAction] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +60,7 @@ export default function ProfileView({ username }: ProfileViewProps) {
     let mounted = true;
 
     const loadProfile = async () => {
-      setLoading(true);
+      if (!cacheHit) setLoading(true);
       setError(null);
 
       const { data: userData, error: userError } = await supabase.auth.getUser();

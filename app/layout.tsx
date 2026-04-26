@@ -71,7 +71,7 @@ export default async function RootLayout({
     var theme = storedTheme === 'dark' || storedTheme === 'light'
       ? storedTheme
       : (serverTheme === 'dark' ? 'dark' : (prefersDark ? 'dark' : 'light'));
-    var color = theme === 'dark' ? '#131415' : '#f7f7f5';
+    var color = theme === 'dark' ? '#000000' : '#f7f7f5';
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
     var m = document.querySelector('meta[name="theme-color"]');

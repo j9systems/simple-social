@@ -23,7 +23,7 @@ export function applyTheme(theme: ThemeMode) {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
 
-  const themeColor = theme === "dark" ? "#131415" : "#f7f7f5";
+  const themeColor = theme === "dark" ? "#000000" : "#f7f7f5";
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) {
     themeColorMeta.setAttribute("content", themeColor);

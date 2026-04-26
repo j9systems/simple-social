@@ -14,14 +14,14 @@
 }
 
 :root[data-theme="dark"] {
-  --background: #131415;
-  --surface: #1b1d1f;
+  --background: #000000;
+  --surface: #111111;
   --foreground: #f2f3f4;
   --muted: #b0b6bc;
-  --line: #32363a;
+  --line: #222222;
   --accent: #4da0ff;
   --tab-active-icon: #b995ff;
-  --tabbar-bg: #1b1d1f;
+  --tabbar-bg: #000000;
   --feed-divider: color-mix(in srgb, var(--line) 28%, var(--background));
 }
 
