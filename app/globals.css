@@ -71,7 +71,7 @@ p {
 .page-wrap {
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem 0;
+  padding: 1.25rem 1.25rem calc(52px + env(safe-area-inset-bottom) + 0.5rem);
 }
 
 .page-wrap-no-top-bar {
@@ -279,7 +279,75 @@ p {
   margin: 0 auto 0.15rem;
 }
 
-/* ── Tab bar: removed for rebuild (reference in support/tab-bar-reference.md) ── */
+/* ── Tab bar ── */
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--tabbar-bg, #fff);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 14px rgba(30, 29, 26, 0.08);
+  /* Icons sit above this padding; background fills the home-indicator zone */
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  touch-action: none;
+}
+
+.tab-bar-inner {
+  display: flex;
+  height: 52px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0.25rem 0.8rem;
+}
+
+.tab-link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.67rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  transition: color 140ms ease;
+}
+
+.tab-link.active {
+  color: var(--tab-active-icon);
+}
+
+.tab-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.tab-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.tab-profile-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1.5px solid var(--line);
+  background: #ece8e0;
+}
+
+.tab-label {
+  white-space: nowrap;
+}
 
 .card {
   background: var(--surface);
@@ -1260,6 +1328,7 @@ button {
 }
 
 :root[data-theme="dark"] .top-bar,
+:root[data-theme="dark"] .tab-bar,
 :root[data-theme="dark"] .comment-composer,
 :root[data-theme="dark"] .search-input-wrap input,
 :root[data-theme="dark"] .icon-button:hover {

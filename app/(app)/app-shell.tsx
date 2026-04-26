@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { HOME_INITIAL_FEED_READY_EVENT } from "@/lib/events";
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
+import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT, getScrollContainer } from "@/lib/events";
 import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
 import { registerServiceWorker } from "@/lib/push-notifications";
 import { isMissingTableError } from "@/lib/supabase-errors";
@@ -14,6 +16,41 @@ const PWA_ICON_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772878441/simpleSocial_Logo_s9xbr8.png";
 const WORDMARK_URL =
   "https://res.cloudinary.com/duy32f0q4/image/upload/v1772339914/ss_wordmark_htwmgq.svg";
+
+const tabs = [
+  {
+    href: "/",
+    label: "Home",
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M3 10.5 12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6h-5v6h-5A1.5 1.5 0 0 1 3 19.5v-9Z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/search",
+    label: "Search",
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M11 4a7 7 0 1 0 4.4 12.5l4 4 1.4-1.4-4-4A7 7 0 0 0 11 4Zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/upload",
+    label: "Upload",
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z" />
+      </svg>
+    ),
+  },
+  { href: "/profile", label: "Profile" },
+];
+
+function isModifiedEvent(e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean }) {
+  return e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
+}
 
 function formatNotificationDate(isoDate: string) {
   return new Date(isoDate).toLocaleString(undefined, {
@@ -66,6 +103,8 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   const [notificationsDebugMessage, setNotificationsDebugMessage] = useState<string | null>(null);
   const [pendingFollowRequestActorIds, setPendingFollowRequestActorIds] = useState<Set<string>>(new Set());
 
+  const [viewerTabAvatarUrl, setViewerTabAvatarUrl] = useState<string | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
   const [hasHomeInitialFeedLoaded, setHasHomeInitialFeedLoaded] = useState(homeInitialFeedReadyOnWindow);
 
   const notificationsPanelRef = useRef<HTMLElement | null>(null);
@@ -316,6 +355,64 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     return () => observer.disconnect();
   }, []);
 
+  /* ── Tab bar handlers ── */
+
+  const handleTabClick = useCallback(
+    (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
+      if (isModifiedEvent(event) || event.button !== 0) return;
+      if (href !== "/" || pathname !== "/") return;
+      if (getScrollContainer().scrollTop <= 0) return;
+      event.preventDefault();
+      window.dispatchEvent(new Event(HOME_TAB_RESELECT_EVENT));
+    },
+    [pathname],
+  );
+
+  const handleTabPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLAnchorElement>, href: string) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (isModifiedEvent(event)) return;
+      if (href === pathname) return;
+      event.preventDefault();
+      router.push(href);
+    },
+    [pathname, router],
+  );
+
+  useEffect(() => {
+    for (const tab of tabs) {
+      router.prefetch(tab.href);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadViewerAvatar = async () => {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", viewer.id)
+        .maybeSingle();
+      if (!active) return;
+      const metadata = viewer.metadata ?? {};
+      const metadataAvatarUrl = typeof metadata.avatar_url === "string" ? metadata.avatar_url : null;
+      setViewerTabAvatarUrl((profileData?.avatar_url as string | null) ?? metadataAvatarUrl);
+    };
+
+    const syncAvatarVersion = () => {
+      setAvatarVersion(readAvatarVersion());
+      void loadViewerAvatar();
+    };
+
+    syncAvatarVersion();
+    window.addEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
+    return () => {
+      active = false;
+      window.removeEventListener(AVATAR_UPDATED_EVENT, syncAvatarVersion);
+    };
+  }, [viewer.id, viewer.metadata]);
+
   return (
     <div className="app-shell">
       {!isProfilePage && !showHomeStartupSplash ? (
@@ -434,6 +531,36 @@ export default function AppShell({ children, viewer }: AppShellProps) {
           />
           <span className="visually-hidden">Loading home feed...</span>
         </div>
+      ) : null}
+
+      {!showHomeStartupSplash ? (
+        <nav aria-label="Primary" className="tab-bar">
+          <div className="tab-bar-inner">
+            {tabs.map((tab) => (
+              <Link
+                className={pathname === tab.href || pathname.startsWith(`${tab.href}/`) ? "tab-link active" : "tab-link"}
+                href={tab.href}
+                key={tab.href}
+                onPointerDown={(e) => handleTabPointerDown(e, tab.href)}
+                onClick={(e) => handleTabClick(e, tab.href)}
+                prefetch
+              >
+                <span className="tab-icon">
+                  {tab.href === "/profile" ? (
+                    <img
+                      alt="Your profile"
+                      className="tab-profile-avatar"
+                      src={buildAvatarSrc(viewerTabAvatarUrl, avatarVersion)}
+                    />
+                  ) : (
+                    tab.icon
+                  )}
+                </span>
+                <span className="tab-label">{tab.label}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
       ) : null}
     </div>
   );
