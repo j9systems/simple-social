@@ -98,7 +98,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     (window as Window & { __ssHomeInitialFeedReady?: boolean }).__ssHomeInitialFeedReady === true;
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsDebugMessage, setNotificationsDebugMessage] = useState<string | null>(null);
   const [pendingFollowRequestActorIds, setPendingFollowRequestActorIds] = useState<Set<string>>(new Set());
@@ -155,20 +154,19 @@ export default function AppShell({ children, viewer }: AppShellProps) {
   );
 
   const loadNotifications = useCallback(
-    async (showLoading = true) => {
-      if (showLoading) setNotificationsLoading(true);
+    async () => {
       const result = await listNotifications(viewer.id);
       setNotifications(result.items);
       setNotificationsDebugMessage(result.errorMessage);
       await loadPendingFollowRequests(result.items);
-      if (showLoading) setNotificationsLoading(false);
     },
     [loadPendingFollowRequests, viewer.id],
   );
 
   const openNotifications = () => {
     if (!notificationsOpen) {
-      // Open instantly, load in background
+      // Open instantly — data is already preloaded from mount.
+      // Silently refresh in the background without any loading state.
       setNotificationsOpen(true);
       void loadNotifications();
     } else {
@@ -460,12 +458,11 @@ export default function AppShell({ children, viewer }: AppShellProps) {
             </header>
 
             {notificationsDebugMessage ? <p className="notifications-error">{notificationsDebugMessage}</p> : null}
-            {notificationsLoading ? <p className="notifications-empty">Loading notifications...</p> : null}
-            {!notificationsLoading && notifications.length === 0 ? (
+            {notifications.length === 0 ? (
               <p className="notifications-empty">No notifications yet.</p>
             ) : null}
 
-            {!notificationsLoading && notifications.length > 0 ? (
+            {notifications.length > 0 ? (
               <div className="notifications-list">
                 {notifications.map((notification) => (
                   <div className={`notification-item ${!notification.read_at ? "is-unread" : ""}`} key={notification.id}>
