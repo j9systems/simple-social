@@ -14,7 +14,6 @@
   --tabbar-total-height: var(--tabbar-height, 64px);
   --vv-bottom: 0px;
   --feed-divider: color-mix(in srgb, var(--line) 36%, var(--background));
-  scroll-padding-top: calc(var(--tabbar-height, 64px) + env(safe-area-inset-top));
 }
 
 :root[data-theme="dark"] {
@@ -68,6 +67,7 @@ html,
 body {
   height: 100%;
   margin: 0;
+  overflow: hidden;
   overscroll-behavior: none;
 }
 
@@ -93,10 +93,13 @@ p {
 }
 
 .app-shell {
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-top: calc(var(--tabbar-height, 64px) + env(safe-area-inset-top));
 }
 
 .page-wrap.is-hidden-for-startup-splash {

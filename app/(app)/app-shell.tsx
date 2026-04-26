@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
-import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT } from "@/lib/events";
+import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT, getScrollContainer } from "@/lib/events";
 import { listNotifications, markNotificationAsRead } from "@/lib/notifications";
 import { registerServiceWorker } from "@/lib/push-notifications";
 import { isMissingTableError } from "@/lib/supabase-errors";
@@ -338,7 +338,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
       if (isModifiedEvent(event) || event.button !== 0) return;
       if (href !== "/" || pathname !== "/") return;
-      if (window.scrollY <= 0) return;
+      if (getScrollContainer().scrollTop <= 0) return;
 
       event.preventDefault();
       window.dispatchEvent(new Event(HOME_TAB_RESELECT_EVENT));
@@ -468,7 +468,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       // Save scroll position before keyboard opens. On iOS, the browser can silently
       // scroll the page when focusing an input, which causes position:fixed elements
       // to appear elevated. We restore this on focus-out.
-      scrollYBeforeFocusRef.current = window.scrollY;
+      scrollYBeforeFocusRef.current = getScrollContainer().scrollTop;
       syncOnNextFrame();
       if (keyboardResetTimerRef.current !== null) {
         window.clearTimeout(keyboardResetTimerRef.current);
@@ -482,7 +482,7 @@ export default function AppShell({ children, viewer }: AppShellProps) {
       // sees the page jump. Only restore if focus didn't move to another input.
       window.requestAnimationFrame(() => {
         if (!isTextInputElement(document.activeElement)) {
-          window.scrollTo(0, scrollYBeforeFocusRef.current);
+          getScrollContainer().scrollTop = scrollYBeforeFocusRef.current;
         }
       });
       syncOnNextFrame();

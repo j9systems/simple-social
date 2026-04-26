@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { TouchEvent } from "react";
 import { AVATAR_UPDATED_EVENT, buildAvatarSrc, readAvatarVersion } from "@/lib/avatar";
-import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT } from "@/lib/events";
+import { HOME_INITIAL_FEED_READY_EVENT, HOME_TAB_RESELECT_EVENT, getScrollContainer } from "@/lib/events";
 import { createNotification } from "@/lib/notifications";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
 import type { FeedComment, FeedPost } from "@/lib/types";
@@ -1057,7 +1057,7 @@ export default function HomePage() {
       if (event.touches.length !== 1) {
         return;
       }
-      if (window.scrollY > 0) {
+      if (getScrollContainer().scrollTop > 0) {
         return;
       }
       pullActiveRef.current = true;
@@ -1072,7 +1072,7 @@ export default function HomePage() {
       if (event.touches.length !== 1) {
         return;
       }
-      if (window.scrollY > 0) {
+      if (getScrollContainer().scrollTop > 0) {
         pullActiveRef.current = false;
         setIsPullingFeed(false);
         setPullDistance(0);
@@ -1161,11 +1161,11 @@ export default function HomePage() {
 
   useEffect(() => {
     const onHomeTabReselect = () => {
-      if (window.scrollY <= 0) {
+      if (getScrollContainer().scrollTop <= 0) {
         return;
       }
 
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      getScrollContainer().scrollTo({ top: 0, behavior: "smooth" });
       if (hasSupabaseEnv) {
         triggerFeedRefresh();
       }
