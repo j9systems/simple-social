@@ -45,18 +45,21 @@
   display: none;
 }
 
+/* Do NOT set overflow:hidden on html/body — on iOS PWA standalone mode,
+   it prevents viewport-fit:cover from extending into the safe area,
+   causing position:fixed;bottom:0 to stop above the home indicator.
+   J9 Command Center has no overflow on html/body either. */
 html,
 body {
   background: var(--tabbar-bg, #fff);
   margin: 0;
-  overflow: hidden;
-  overscroll-behavior: none;
 }
 
 body {
   color: var(--foreground);
   font-family: "Segoe UI", sans-serif;
   -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
 }
 
 h1 {
@@ -298,7 +301,7 @@ p {
 
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  padding-bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom);
 
   display: flex;
   align-items: stretch;
