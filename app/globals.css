@@ -311,9 +311,6 @@ p {
   box-shadow: 0 -4px 14px rgba(30, 29, 26, 0.08);
   z-index: 1000;
 
-  /* Stable height calculation */
-  height: var(--tabbar-height, 64px);
-
   /* Safe-area applied as padding */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
