@@ -50,7 +50,7 @@
    J9 Command Center has no overflow on html/body either. */
 html,
 body {
-  background: var(--tabbar-bg, #fff);
+  background: var(--background);
   margin: 0;
 }
 
@@ -75,7 +75,7 @@ p {
   flex: 1 0 auto;
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: 1.25rem 1.25rem 0;
 }
 
 .page-wrap-no-top-bar {
