@@ -3,5 +3,5 @@ export const HOME_INITIAL_FEED_READY_EVENT = "simple-social:home-initial-feed-re
 
 /** Returns the .app-shell element that owns the main scroll, or falls back to documentElement. */
 export function getScrollContainer(): HTMLElement {
-  return (document.querySelector(".app-shell") as HTMLElement | null) ?? document.documentElement;
+  return (document.querySelector(".app-scroll-area") as HTMLElement | null) ?? document.documentElement;
 }

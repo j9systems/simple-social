@@ -11,8 +11,6 @@
   --tab-active-icon: #5f259f;
   --tabbar-bg: #ffffff;
   --tabbar-height: 77px;
-  --tabbar-total-height: var(--tabbar-height, 64px);
-  --vv-bottom: 0px;
   --feed-divider: color-mix(in srgb, var(--line) 36%, var(--background));
 }
 
@@ -85,7 +83,7 @@ p {
   flex: 1;
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem var(--tabbar-total-height, 64px);
+  padding: 1.25rem 1.25rem 1.25rem;
 }
 
 .page-wrap-no-top-bar {
@@ -97,8 +95,14 @@ p {
   height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.app-scroll-area {
+  flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
   scroll-padding-top: calc(var(--tabbar-height, 64px) + env(safe-area-inset-top));
 }
 
@@ -299,10 +303,7 @@ p {
 }
 
 .tab-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: var(--vv-bottom, 0px);
+  flex-shrink: 0;
 
   /* Visuals */
   border-top: 1px solid var(--line);
@@ -313,15 +314,13 @@ p {
   /* Stable height calculation */
   height: var(--tabbar-height, 64px);
 
-  /* Safe-area applied as padding, not position */
+  /* Safe-area applied as padding */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  padding-bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom);
 
-  /* Prevent layout reflow from internal flex children */
   display: flex;
   align-items: stretch;
-  transition: transform 180ms ease, opacity 160ms ease;
 }
 
 .tab-bar-inner {
