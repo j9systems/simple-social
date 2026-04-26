@@ -84,8 +84,17 @@ p {
 }
 
 .app-shell {
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   height: 100dvh;
+  /* NO overflow here — scroll lives on the inner .app-scroll-area
+     so the tab-bar sits OUTSIDE the scroll container (matches J9 pattern). */
+}
+
+.app-scroll-area {
+  flex: 1 1 0%;
+  min-height: 0;              /* allow flex child to shrink below content height */
   overflow-y: auto;
   overscroll-behavior-y: contain;
   scroll-padding-top: calc(var(--tabbar-height, 64px) + env(safe-area-inset-top));

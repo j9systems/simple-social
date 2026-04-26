@@ -471,124 +471,128 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   return (
     <div className="app-shell">
-      {!isProfilePage && !showHomeStartupSplash ? (
-        <header className={`top-bar ${isHomeFeed ? "top-bar-home" : ""}`}>
-          <Image
-            alt="Simple Social"
-            className={useHomeBrandTreatment ? "brand-logo brand-logo-home" : "brand-logo"}
-            height={64}
-            priority
-            src={WORDMARK_URL}
-            width={320}
-          />
+      {/* ── scrollable area (header + main + splash) ── */}
+      <div className="app-scroll-area">
+        {!isProfilePage && !showHomeStartupSplash ? (
+          <header className={`top-bar ${isHomeFeed ? "top-bar-home" : ""}`}>
+            <Image
+              alt="Simple Social"
+              className={useHomeBrandTreatment ? "brand-logo brand-logo-home" : "brand-logo"}
+              height={64}
+              priority
+              src={WORDMARK_URL}
+              width={320}
+            />
 
-          <button
-            aria-expanded={notificationsOpen}
-            aria-haspopup="dialog"
-            aria-label="Open notifications"
-            className="icon-button notifications-button"
-            onClick={() => {
-              void openNotifications();
-            }}
-            ref={notificationsButtonRef}
-            type="button"
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24">
-              <path d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v2.6c0 .7-.2 1.4-.7 2l-1.5 2.2a1 1 0 0 0 .8 1.5h13.8a1 1 0 0 0 .8-1.5l-1.5-2.2c-.5-.6-.7-1.3-.7-2V9A5.5 5.5 0 0 0 12 3.5Zm0 17.2a2.6 2.6 0 0 0 2.5-2h-5a2.6 2.6 0 0 0 2.5 2Z" />
-            </svg>
-            {unreadNotificationsCount > 0 ? (
-              <span className="notification-badge">{unreadNotificationsCount}</span>
-            ) : null}
-          </button>
+            <button
+              aria-expanded={notificationsOpen}
+              aria-haspopup="dialog"
+              aria-label="Open notifications"
+              className="icon-button notifications-button"
+              onClick={() => {
+                void openNotifications();
+              }}
+              ref={notificationsButtonRef}
+              type="button"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v2.6c0 .7-.2 1.4-.7 2l-1.5 2.2a1 1 0 0 0 .8 1.5h13.8a1 1 0 0 0 .8-1.5l-1.5-2.2c-.5-.6-.7-1.3-.7-2V9A5.5 5.5 0 0 0 12 3.5Zm0 17.2a2.6 2.6 0 0 0 2.5-2h-5a2.6 2.6 0 0 0 2.5 2Z" />
+              </svg>
+              {unreadNotificationsCount > 0 ? (
+                <span className="notification-badge">{unreadNotificationsCount}</span>
+              ) : null}
+            </button>
 
-          <section
-            aria-hidden={!notificationsOpen}
-            aria-label="Notifications"
-            className={`notifications-panel ${notificationsOpen ? "is-open" : ""}`}
-            ref={notificationsPanelRef}
-            role="dialog"
-          >
-            <header className="notifications-panel-header">
-              <h2>Notifications</h2>
-            </header>
+            <section
+              aria-hidden={!notificationsOpen}
+              aria-label="Notifications"
+              className={`notifications-panel ${notificationsOpen ? "is-open" : ""}`}
+              ref={notificationsPanelRef}
+              role="dialog"
+            >
+              <header className="notifications-panel-header">
+                <h2>Notifications</h2>
+              </header>
 
-            {notificationsDebugMessage ? <p className="notifications-error">{notificationsDebugMessage}</p> : null}
-            {notificationsLoading ? <p className="notifications-empty">Loading notifications...</p> : null}
-            {!notificationsLoading && notifications.length === 0 ? (
-              <p className="notifications-empty">No notifications yet.</p>
-            ) : null}
+              {notificationsDebugMessage ? <p className="notifications-error">{notificationsDebugMessage}</p> : null}
+              {notificationsLoading ? <p className="notifications-empty">Loading notifications...</p> : null}
+              {!notificationsLoading && notifications.length === 0 ? (
+                <p className="notifications-empty">No notifications yet.</p>
+              ) : null}
 
-            {!notificationsLoading && notifications.length > 0 ? (
-              <div className="notifications-list">
-                {notifications.map((notification) => (
-                  <div className={`notification-item ${!notification.read_at ? "is-unread" : ""}`} key={notification.id}>
-                    <button
-                      className="notification-main-button"
-                      onClick={() => {
-                        void handleNotificationClick(notification);
-                      }}
-                      type="button"
-                    >
-                      {notification.type === "follow" || notification.type === "follow_request" ? (
-                        <img
-                          alt={`${notification.actor_username ?? "User"} avatar`}
-                          className="notification-avatar-thumb"
-                          src={notification.actor_avatar_url ?? PWA_ICON_URL}
-                        />
-                      ) : (
-                        <img
-                          alt="Related post thumbnail"
-                          className="notification-post-thumb"
-                          src={notification.post_image_url ?? PWA_ICON_URL}
-                        />
-                      )}
-
-                      <span className="notification-copy">
-                        <span>{getNotificationMessage(notification)}</span>
-                        <time dateTime={notification.created_at}>{formatNotificationDate(notification.created_at)}</time>
-                      </span>
-                    </button>
-                    {notification.type === "follow_request" && notification.actor_profile_id ? (
+              {!notificationsLoading && notifications.length > 0 ? (
+                <div className="notifications-list">
+                  {notifications.map((notification) => (
+                    <div className={`notification-item ${!notification.read_at ? "is-unread" : ""}`} key={notification.id}>
                       <button
-                        className="secondary-button notification-accept-button"
-                        disabled={!pendingFollowRequestActorIds.has(notification.actor_profile_id)}
+                        className="notification-main-button"
                         onClick={() => {
-                          void handleAcceptFollowRequest(notification);
+                          void handleNotificationClick(notification);
                         }}
                         type="button"
                       >
-                        {pendingFollowRequestActorIds.has(notification.actor_profile_id) ? "Accept" : "Accepted"}
+                        {notification.type === "follow" || notification.type === "follow_request" ? (
+                          <img
+                            alt={`${notification.actor_username ?? "User"} avatar`}
+                            className="notification-avatar-thumb"
+                            src={notification.actor_avatar_url ?? PWA_ICON_URL}
+                          />
+                        ) : (
+                          <img
+                            alt="Related post thumbnail"
+                            className="notification-post-thumb"
+                            src={notification.post_image_url ?? PWA_ICON_URL}
+                          />
+                        )}
+
+                        <span className="notification-copy">
+                          <span>{getNotificationMessage(notification)}</span>
+                          <time dateTime={notification.created_at}>{formatNotificationDate(notification.created_at)}</time>
+                        </span>
                       </button>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </section>
-        </header>
-      ) : null}
+                      {notification.type === "follow_request" && notification.actor_profile_id ? (
+                        <button
+                          className="secondary-button notification-accept-button"
+                          disabled={!pendingFollowRequestActorIds.has(notification.actor_profile_id)}
+                          onClick={() => {
+                            void handleAcceptFollowRequest(notification);
+                          }}
+                          type="button"
+                        >
+                          {pendingFollowRequestActorIds.has(notification.actor_profile_id) ? "Accept" : "Accepted"}
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          </header>
+        ) : null}
 
-      <main
-        aria-hidden={showHomeStartupSplash}
-        className={`${isProfilePage ? "page-wrap page-wrap-no-top-bar" : "page-wrap"} ${showHomeStartupSplash ? "is-hidden-for-startup-splash" : ""}`}
-      >
-        {children}
-      </main>
+        <main
+          aria-hidden={showHomeStartupSplash}
+          className={`${isProfilePage ? "page-wrap page-wrap-no-top-bar" : "page-wrap"} ${showHomeStartupSplash ? "is-hidden-for-startup-splash" : ""}`}
+        >
+          {children}
+        </main>
 
-      {showHomeStartupSplash ? (
-        <div aria-live="polite" className="app-startup-splash" role="status">
-          <Image
-            alt="Simple Social"
-            className="app-startup-wordmark"
-            height={180}
-            priority
-            src={WORDMARK_URL}
-            width={720}
-          />
-          <span className="visually-hidden">Loading home feed...</span>
-        </div>
-      ) : null}
+        {showHomeStartupSplash ? (
+          <div aria-live="polite" className="app-startup-splash" role="status">
+            <Image
+              alt="Simple Social"
+              className="app-startup-wordmark"
+              height={180}
+              priority
+              src={WORDMARK_URL}
+              width={720}
+            />
+            <span className="visually-hidden">Loading home feed...</span>
+          </div>
+        ) : null}
+      </div>
 
+      {/* ── tab bar: OUTSIDE the scroll area (matches J9 pattern) ── */}
       {!showHomeStartupSplash ? (
         <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
           <div className="tab-bar-inner">
