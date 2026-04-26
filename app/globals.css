@@ -57,8 +57,10 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Use tab-bar background on html to fill the iOS safe-area gap at the
+   bottom of the screen (same technique as J9 Command Center). */
 html {
-  background: var(--background);
+  background: var(--tabbar-bg, #fff);
 }
 
 html,
