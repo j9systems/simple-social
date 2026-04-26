@@ -84,10 +84,23 @@ p {
 
 .app-shell {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   overflow-y: auto;
   overscroll-behavior-y: contain;
   scroll-padding-top: calc(64px + env(safe-area-inset-top));
+}
+
+/* In iOS PWA standalone mode, bottom:0 for fixed elements can stop at the
+   safe-area boundary instead of the physical screen edge. This extends the
+   scroll container past that boundary so content fills the full screen. */
+@media (display-mode: standalone) {
+  .app-shell {
+    bottom: calc(-1 * env(safe-area-inset-bottom, 34px));
+    padding-bottom: env(safe-area-inset-bottom, 34px);
+  }
 }
 
 .page-wrap.is-hidden-for-startup-splash {

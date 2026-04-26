@@ -53,7 +53,8 @@ export default async function RootLayout({
   return (
     <html lang="en" data-theme={serverTheme} style={{ colorScheme: serverTheme }} suppressHydrationWarning>
       <head>
-        {/* iOS status bar styling (PWA / standalone) */}
+        {/* iOS PWA: required for viewport-fit:cover to take effect in standalone mode */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
           name="apple-mobile-web-app-status-bar-style"
           content="black-translucent"
