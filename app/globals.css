@@ -93,17 +93,10 @@ p {
 }
 
 .app-shell {
-  display: flex;
-  flex-direction: column;
   height: 100vh;
   height: 100dvh;
-}
-
-.app-scroll-area {
-  flex: 1;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  min-height: 0;
+  overscroll-behavior-y: contain;
   scroll-padding-top: calc(var(--tabbar-height, 64px) + env(safe-area-inset-top));
 }
 
@@ -852,7 +845,7 @@ button {
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease;
-  z-index: 24;
+  z-index: 1050;
 }
 
 .comments-sheet-backdrop.is-open {
@@ -879,7 +872,7 @@ button {
   opacity: 0;
   pointer-events: none;
   transition: transform 220ms ease, opacity 220ms ease;
-  z-index: 25;
+  z-index: 1100;
 }
 
 .comments-sheet.is-open {

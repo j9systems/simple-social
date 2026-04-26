@@ -471,7 +471,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
 
   return (
     <div className="app-shell">
-      <div className="app-scroll-area">
       {!isProfilePage && !showHomeStartupSplash ? (
         <header className={`top-bar ${isHomeFeed ? "top-bar-home" : ""}`}>
           <Image
@@ -589,7 +588,6 @@ export default function AppShell({ children, viewer }: AppShellProps) {
           <span className="visually-hidden">Loading home feed...</span>
         </div>
       ) : null}
-      </div>
 
       {!showHomeStartupSplash ? (
         <nav aria-label="Primary" className="tab-bar" ref={tabBarRef}>
