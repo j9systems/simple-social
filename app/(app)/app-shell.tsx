@@ -166,11 +166,14 @@ export default function AppShell({ children, viewer }: AppShellProps) {
     [loadPendingFollowRequests, viewer.id],
   );
 
-  const openNotifications = async () => {
+  const openNotifications = () => {
     if (!notificationsOpen) {
-      await loadNotifications();
+      // Open instantly, load in background
+      setNotificationsOpen(true);
+      void loadNotifications();
+    } else {
+      setNotificationsOpen(false);
     }
-    setNotificationsOpen((current) => !current);
   };
 
   const handleNotificationClick = async (notification: NotificationItem) => {
