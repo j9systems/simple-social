@@ -22,7 +22,10 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0b0c14"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -51,6 +54,13 @@
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cf4ca129-fe96-43cc-b649-b9b80c5078f6"
+      }
+    },
+    "owner": "j9systems"
   }
 }
