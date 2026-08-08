@@ -1,43 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Simple Social
 
-## Getting Started
+Photos and videos, in the order they happened. An iOS / Android / web app built with
+Expo (React Native + TypeScript), expo-router, and Supabase.
 
-First, run the development server:
+## Stack
+
+- **App**: Expo SDK 54, React Native, TypeScript, expo-router
+- **Backend**: Supabase (Postgres + Auth + Storage) — project `juijqekwczzpmtxsismj`
+  in the Simple Social organization. All access is enforced with row-level security;
+  the app talks to Supabase directly with the publishable key.
+- **Web hosting**: Vercel (`npx expo export -p web`, served from `dist/` — see `vercel.json`)
+- **Native builds**: EAS Build → TestFlight / Play Console
+
+## Local development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env      # values are already filled in
+npx expo start            # press i for iOS simulator, a for Android, w for web
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment variables
 
-## Supabase setup
+| Variable | Where | Value |
+|---|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | Vercel, EAS, `.env` | `https://juijqekwczzpmtxsismj.supabase.co` |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Vercel, EAS, `.env` | the `sb_publishable_…` key (safe to expose; RLS protects data) |
 
-1. Copy `.env.example` to `.env.local`.
-2. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from your Supabase project.
-3. (Optional) Set `NEXT_PUBLIC_SUPABASE_POSTS_BUCKET` and `NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET` if your storage bucket names differ from defaults.
-4. Run `npm install` to install `@supabase/supabase-js`.
+Both are baked into `eas.json` build profiles and set on the Vercel project.
+No server-side secrets are required — the service-role/secret key stays out of
+the app entirely.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Schema lives in the Supabase project as tracked migrations
+(`core_tables`, `functions_and_triggers`, `rls_and_storage`):
 
-## Learn More
+- `profiles`, `posts`, `post_media`, `follows` (with `pending`/`accepted` for
+  private accounts), `post_likes`, `comments` (threaded), `comment_likes`,
+  `saved_posts`, `blocked_users`, `notifications`
+- Triggers create profiles on signup, route follow requests, and fan out
+  notifications (likes, comments, replies, mentions, follows, request accepts)
+- Storage buckets: `media` (post photos/videos), `avatars`
+- `get_email_for_username()` RPC enables logging in with a username
 
-To learn more about Next.js, take a look at the following resources:
+## Building for the stores
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install -g eas-cli
+eas login                      # your Expo account
+eas build:configure            # links the project (one time)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# iOS → TestFlight
+eas build --platform ios --profile production
+eas submit --platform ios --latest
 
-## Deploy on Vercel
+# Android → Play Console
+eas build --platform android --profile production
+eas submit --platform android --latest
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Bundle IDs: `com.j9systems.simplesocial` (both platforms).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Web deploy (Vercel)
+
+Vercel builds with `npx expo export -p web` and serves `dist/` as a single-page
+app (`vercel.json`). Connect this repo to the Vercel project and pushes to the
+production branch will deploy automatically.
