@@ -7,6 +7,7 @@ import { Avatar } from '@/components/Avatar';
 import { BellIcon, ComposeIcon, HomeIcon, SearchIcon } from '@/components/Icons';
 import { unreadCount } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { configureNotificationHandling, registerForPush } from '@/lib/push';
 import { useTheme } from '@/lib/theme';
 
 function TabBar({ state, navigation }: BottomTabBarProps) {
@@ -115,6 +116,13 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
 
 export default function TabsLayout() {
   const { session, loading } = useAuth();
+
+  useEffect(() => {
+    if (!session) return;
+    configureNotificationHandling();
+    registerForPush(session.user.id);
+  }, [session]);
+
   if (!loading && !session) return <Redirect href="/login" />;
   return (
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <TabBar {...props} />}>

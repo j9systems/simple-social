@@ -76,12 +76,17 @@ export async function signInWithUsernameOrEmail(identifier: string, password: st
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Create an account. Email confirmation is disabled on the project
+ * (auth `mailer_autoconfirm`), so a session is returned immediately and the
+ * user is logged in without any email being sent.
+ */
 export async function signUpWithEmail(
   email: string,
   username: string,
   password: string,
   displayName?: string
-) {
+): Promise<{ loggedIn: boolean }> {
   const clean = username.trim().toLowerCase();
   if (!/^[a-z0-9._]{3,30}$/.test(clean)) {
     throw new Error('Usernames are 3–30 characters: lowercase letters, numbers, dots, underscores.');
@@ -92,10 +97,11 @@ export async function signUpWithEmail(
     .eq('username', clean)
     .maybeSingle();
   if (taken) throw new Error('That username is taken.');
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
     options: { data: { username: clean, display_name: displayName?.trim() || null } },
   });
   if (error) throw new Error(error.message);
+  return { loggedIn: Boolean(data.session) };
 }

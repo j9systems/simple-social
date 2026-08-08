@@ -50,7 +50,8 @@
           "cameraPermission": "Simple Social needs camera access so you can take photos to share."
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": false

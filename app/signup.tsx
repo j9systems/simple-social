@@ -34,12 +34,15 @@ export default function Signup() {
     }
     setBusy(true);
     try {
-      await signUpWithEmail(email, username, password, displayName);
-      Alert.alert(
-        'Almost there',
-        'Check your email to confirm your account, then log in.',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      const { loggedIn } = await signUpWithEmail(email, username, password, displayName);
+      if (!loggedIn) {
+        Alert.alert(
+          'Almost there',
+          'Check your email to confirm your account, then log in.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      }
+      // when a session is returned the auth listener redirects into the app
     } catch (err) {
       Alert.alert('Sign up failed', err instanceof Error ? err.message : 'Please try again.');
     } finally {

@@ -1,9 +1,16 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { updateProfile } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import {
+  DEFAULT_PREFS,
+  fetchNotificationPrefs,
+  registerForPush,
+  saveNotificationPrefs,
+  type NotificationPrefs,
+} from '@/lib/push';
 import { useTheme } from '@/lib/theme';
 
 export default function Settings() {
@@ -13,8 +20,34 @@ export default function Settings() {
   const [usernameDraft, setUsernameDraft] = useState(profile?.username ?? '');
   const [saving, setSaving] = useState(false);
   const [isPrivate, setIsPrivate] = useState(profile?.is_private ?? false);
+  const [prefs, setPrefs] = useState<NotificationPrefs>({ ...DEFAULT_PREFS });
+
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (userId) fetchNotificationPrefs(userId).then(setPrefs).catch(() => {});
+  }, [userId]);
 
   if (!session || !profile) return null;
+
+  const setPref = async (key: keyof NotificationPrefs, value: boolean) => {
+    const next = { ...prefs, [key]: value };
+    setPrefs(next);
+    try {
+      await saveNotificationPrefs(session.user.id, next);
+      if (key === 'push_enabled' && value) {
+        // re-request OS permission / re-register this device if needed
+        const ok = await registerForPush(session.user.id);
+        if (!ok) {
+          Alert.alert(
+            'Notifications',
+            'Notifications are turned off for Simple Social in your device Settings. Enable them there to receive pushes.'
+          );
+        }
+      }
+    } catch {
+      setPrefs(prefs);
+    }
+  };
 
   const usernameDirty = usernameDraft.trim().toLowerCase() !== profile.username;
 
@@ -151,6 +184,71 @@ export default function Settings() {
             thumbColor="#e9e9ed"
           />
         </View>
+
+        <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 6 }}>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '600',
+              color: theme.ink3,
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+            }}
+          >
+            Notifications
+          </Text>
+        </View>
+
+        <View style={[rowStyle, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.ink }}>
+              Push notifications
+            </Text>
+            <Text style={{ fontSize: 12, color: theme.ink2 }}>
+              Get notified on this device
+            </Text>
+          </View>
+          <Switch
+            value={prefs.push_enabled}
+            onValueChange={(v) => setPref('push_enabled', v)}
+            trackColor={{ true: theme.accent, false: theme.chip }}
+            thumbColor="#e9e9ed"
+          />
+        </View>
+
+        {(
+          [
+            ['likes', 'Likes', 'When someone likes your posts or comments'],
+            ['comments', 'Comments', 'Comments on your posts and replies to you'],
+            ['follows', 'Follows', 'New followers and follow requests'],
+            ['mentions', 'Mentions', 'When someone @mentions you'],
+          ] as const
+        ).map(([key, label, description]) => (
+          <View
+            key={key}
+            style={[
+              rowStyle,
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                opacity: prefs.push_enabled ? 1 : 0.45,
+              },
+            ]}
+          >
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.ink }}>{label}</Text>
+              <Text style={{ fontSize: 12, color: theme.ink2 }}>{description}</Text>
+            </View>
+            <Switch
+              value={prefs[key]}
+              onValueChange={(v) => setPref(key, v)}
+              disabled={!prefs.push_enabled}
+              trackColor={{ true: theme.accent, false: theme.chip }}
+              thumbColor="#e9e9ed"
+            />
+          </View>
+        ))}
 
         <Pressable onPress={logOut} style={rowStyle}>
           <Text style={{ fontSize: 14, fontWeight: '600', color: theme.accent }}>Log out</Text>
